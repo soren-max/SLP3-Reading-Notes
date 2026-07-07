@@ -8,6 +8,34 @@
 - API: FastAPI, SQLAlchemy, SQLite, Pydantic
 - Structure: `apps/web` and `apps/api`
 
+## Frontend Experience
+
+- Dashboard: AI learning workspace with hero summary, progress ring, research thread, and high-relevance chapter cards.
+- Chapters: searchable chapter explorer with priority, status, and research-tag filters.
+- Roadmap: timeline view from LLM foundation to RAG, information extraction, entity linking, and KG reasoning.
+- Notes: three-column Markdown workspace with sticky chapter navigation, live preview, save toast, copy, Markdown export, and mentor-report draft generation.
+- Report: stage report generator with one-click WeChat summary copy.
+- UI: responsive glassmorphism cards, slate/indigo/cyan palette, dark-mode friendly tokens, loading and error states.
+
+## Screenshots
+
+Add screenshots after running the app locally:
+
+```text
+docs/screenshots/dashboard.png
+docs/screenshots/chapters.png
+docs/screenshots/roadmap.png
+docs/screenshots/notes.png
+docs/screenshots/report.png
+```
+
+Recommended README layout:
+
+```md
+![Dashboard](docs/screenshots/dashboard.png)
+![Notes Workspace](docs/screenshots/notes.png)
+```
+
 ## Quick Start
 
 ```bash

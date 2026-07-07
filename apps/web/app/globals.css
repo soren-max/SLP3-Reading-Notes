@@ -3,24 +3,46 @@
 @tailwind utilities;
 
 :root {
-  --background: 210 40% 98%;
-  --foreground: 222 47% 11%;
+  --background: 222 47% 97%;
+  --foreground: 222 47% 10%;
   --card: 0 0% 100%;
   --card-foreground: 222 47% 11%;
-  --primary: 199 89% 32%;
+  --primary: 239 84% 61%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 210 40% 94%;
-  --secondary-foreground: 222 47% 11%;
-  --muted: 210 40% 94%;
-  --muted-foreground: 215 16% 40%;
-  --accent: 168 76% 36%;
+  --secondary: 221 83% 95%;
+  --secondary-foreground: 226 70% 30%;
+  --muted: 220 30% 94%;
+  --muted-foreground: 215 18% 38%;
+  --accent: 188 95% 39%;
   --accent-foreground: 0 0% 100%;
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
-  --border: 214 32% 88%;
-  --input: 214 32% 88%;
-  --ring: 199 89% 32%;
+  --border: 220 27% 88%;
+  --input: 220 27% 88%;
+  --ring: 239 84% 61%;
   --radius: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: 224 38% 8%;
+    --foreground: 214 32% 91%;
+    --card: 224 35% 12%;
+    --card-foreground: 214 32% 91%;
+    --primary: 238 92% 72%;
+    --primary-foreground: 224 38% 8%;
+    --secondary: 226 34% 18%;
+    --secondary-foreground: 214 32% 91%;
+    --muted: 224 30% 16%;
+    --muted-foreground: 215 20% 68%;
+    --accent: 187 92% 55%;
+    --accent-foreground: 224 38% 8%;
+    --destructive: 0 70% 56%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 224 25% 22%;
+    --input: 224 25% 22%;
+    --ring: 238 92% 72%;
+  }
 }
 
 * {
@@ -29,8 +51,33 @@
 
 body {
   @apply bg-background text-foreground antialiased;
+  background-image:
+    radial-gradient(circle at 20% 0%, hsl(239 84% 61% / 0.16), transparent 32rem),
+    radial-gradient(circle at 85% 15%, hsl(188 95% 39% / 0.13), transparent 28rem),
+    linear-gradient(hsl(var(--border) / 0.4) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--border) / 0.4) 1px, transparent 1px);
+  background-size: auto, auto, 42px 42px, 42px 42px;
+  background-attachment: fixed;
 }
 
 a {
   @apply underline-offset-4;
+}
+
+::selection {
+  background: hsl(var(--primary) / 0.18);
+}
+
+@layer components {
+  .glass-panel {
+    @apply border bg-card/78 shadow-sm backdrop-blur-xl;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-indigo-600 via-violet-600 to-cyan-600 bg-clip-text text-transparent;
+  }
+
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
 }
