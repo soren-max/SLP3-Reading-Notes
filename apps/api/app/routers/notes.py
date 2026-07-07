@@ -9,8 +9,28 @@ router = APIRouter(prefix="/api/notes", tags=["notes"])
 
 
 @router.get("", response_model=list[NoteRead])
-def read_notes(chapter_id: int | None = None, q: str | None = None, tag: str | None = None, db: Session = Depends(get_db)):
-    return list_notes(db, chapter_id=chapter_id, q=q, tag=tag)
+def read_notes(
+    chapter_id: int | None = None,
+    source_id: int | None = None,
+    source_type: str | None = None,
+    research_direction: str | None = None,
+    status: str | None = None,
+    priority: str | None = None,
+    q: str | None = None,
+    tag: str | None = None,
+    db: Session = Depends(get_db),
+):
+    return list_notes(
+        db,
+        chapter_id=chapter_id,
+        source_id=source_id,
+        source_type=source_type,
+        research_direction=research_direction,
+        status=status,
+        priority=priority,
+        q=q,
+        tag=tag,
+    )
 
 
 @router.post("", response_model=NoteRead, status_code=201)

@@ -1,4 +1,4 @@
-from sqlalchemy import JSON, Integer, String, Text
+from sqlalchemy import JSON, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -8,7 +8,8 @@ class Chapter(Base):
     __tablename__ = "chapters"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    number: Mapped[int] = mapped_column(Integer, unique=True, index=True)
+    source_id: Mapped[int] = mapped_column(ForeignKey("sources.id"), index=True, default=1)
+    number: Mapped[int] = mapped_column(Integer, index=True)
     title: Mapped[str] = mapped_column(String(180), index=True)
     priority: Mapped[str] = mapped_column(String(20), index=True)
     status: Mapped[str] = mapped_column(String(20), default="未开始")
@@ -26,4 +27,5 @@ class Chapter(Base):
     resources: Mapped[list[str]] = mapped_column(JSON, default=list)
     tags: Mapped[list[str]] = mapped_column(JSON, default=list)
 
+    source: Mapped["Source"] = relationship(back_populates="chapters")
     notes: Mapped[list["Note"]] = relationship(back_populates="chapter", cascade="all, delete-orphan")

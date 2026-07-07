@@ -4,9 +4,12 @@ from sqlalchemy.orm import Session
 from app.models.chapter import Chapter
 
 
-def list_chapters(db: Session) -> list[Chapter]:
+def list_chapters(db: Session, source_id: int | None = None) -> list[Chapter]:
     priority_order = {"高": 0, "中": 1, "低": 2}
-    chapters = db.scalars(select(Chapter)).all()
+    stmt = select(Chapter)
+    if source_id:
+        stmt = stmt.where(Chapter.source_id == source_id)
+    chapters = db.scalars(stmt).all()
     return sorted(chapters, key=lambda c: (priority_order.get(c.priority, 9), c.number))
 
 

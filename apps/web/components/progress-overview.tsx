@@ -9,12 +9,14 @@ export function ProgressOverview({
   highPriority,
   kgRelated,
   nextTask,
+  currentStage = "AI Research Workspace",
 }: {
   percent: number;
   completed: number;
   highPriority: number;
   kgRelated: number;
   nextTask: string;
+  currentStage?: string;
 }) {
   const stats = [
     { label: "已完成章节", value: completed, icon: CheckCircle2, tone: "text-emerald-500" },
@@ -42,8 +44,8 @@ export function ProgressOverview({
           </div>
           <div className="space-y-3">
             <p className="text-sm text-white/75">当前阶段</p>
-            <p className="text-xl font-semibold">Large Language Models 已完成</p>
-            <p className="text-sm leading-6 text-white/75">下一阶段进入 Retrieval-based Models，并连接 RAG、IE 与实体链接。</p>
+            <p className="text-xl font-semibold">{currentStage}</p>
+            <p className="text-sm leading-6 text-white/75">下一阶段聚焦 {nextTask}，并连接 RAG、IE、实体链接与知识图谱推理。</p>
           </div>
         </CardContent>
       </Card>

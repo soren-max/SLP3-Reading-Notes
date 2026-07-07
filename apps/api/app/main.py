@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import init_db
-from app.routers import chapters, notes, report, roadmap
+from app.routers import chapters, notes, report, roadmap, sources
 
 load_dotenv()
 init_db()
@@ -23,6 +23,7 @@ app.add_middleware(
 
 app.include_router(chapters.router)
 app.include_router(notes.router)
+app.include_router(sources.router)
 app.include_router(roadmap.router)
 app.include_router(report.router)
 

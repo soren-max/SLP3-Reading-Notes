@@ -9,8 +9,8 @@ router = APIRouter(prefix="/api/chapters", tags=["chapters"])
 
 
 @router.get("", response_model=list[ChapterListItem])
-def read_chapters(db: Session = Depends(get_db)):
-    return list_chapters(db)
+def read_chapters(source_id: int | None = None, db: Session = Depends(get_db)):
+    return list_chapters(db, source_id=source_id)
 
 
 @router.get("/{chapter_id}", response_model=ChapterRead)

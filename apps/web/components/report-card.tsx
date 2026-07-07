@@ -6,10 +6,13 @@ import { Clipboard, FileText, Lightbulb, Link2, ListChecks } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import type { Report } from "@/lib/api";
+import { api, type Report, type Source } from "@/lib/api";
 
-export function ReportCard({ report }: { report: Report }) {
+export function ReportCard({ initialReport, sources }: { initialReport: Report; sources: Source[] }) {
+  const [report, setReport] = useState(initialReport);
+  const [sourceId, setSourceId] = useState(sources[0]?.id ?? 0);
   const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!copied) return;
@@ -20,6 +23,14 @@ export function ReportCard({ report }: { report: Report }) {
   async function copy() {
     await navigator.clipboard.writeText(report.wechat_text);
     setCopied(true);
+  }
+
+  async function changeSource(nextSourceId: number) {
+    setSourceId(nextSourceId);
+    setLoading(true);
+    const nextReport = await api.report(nextSourceId);
+    setReport(nextReport);
+    setLoading(false);
   }
 
   return (
@@ -38,9 +49,12 @@ export function ReportCard({ report }: { report: Report }) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <select className="min-h-11 w-full rounded-md border border-white/20 bg-white/10 px-3 text-sm text-white outline-none" value={sourceId} onChange={(event) => changeSource(Number(event.target.value))} aria-label="选择汇报资料">
+              {sources.map((source) => <option className="text-slate-900" key={source.id} value={source.id}>{source.title}</option>)}
+            </select>
             <div className="text-5xl font-semibold">{report.progress_percent}%</div>
             <Progress value={report.progress_percent} />
-            <p className="text-sm text-white/80">{report.current_stage}</p>
+            <p className="text-sm text-white/80">{loading ? "生成中..." : report.current_stage}</p>
           </CardContent>
         </Card>
         <Card>

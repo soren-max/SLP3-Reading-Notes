@@ -9,5 +9,5 @@ router = APIRouter(prefix="/api/report", tags=["report"])
 
 
 @router.get("", response_model=ReportRead)
-def read_report(db: Session = Depends(get_db)):
-    return build_report(db)
+def read_report(source_id: int | None = None, db: Session = Depends(get_db)):
+    return build_report(db, source_id=source_id)

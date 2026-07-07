@@ -2,7 +2,7 @@ import { ArrowDown, FileCheck2, Layers3 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TagChip } from "@/components/tag-chip";
-import type { RoadmapPhase } from "@/lib/api";
+import type { CustomRoadmap, RoadmapPhase } from "@/lib/api";
 
 const outputs = [
   "LLM 基础概念图谱",
@@ -59,6 +59,28 @@ export function RoadmapTimeline({ phases }: { phases: RoadmapPhase[] }) {
           </Card>
           {index < phases.length - 1 && <ArrowDown className="mx-auto my-3 h-5 w-5 text-muted-foreground md:hidden" />}
         </div>
+      ))}
+    </div>
+  );
+}
+
+export function CustomRoadmaps({ routes }: { routes: CustomRoadmap[] }) {
+  return (
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {routes.map((route) => (
+        <Card key={route.name} className="hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg hover:shadow-indigo-500/10">
+          <CardHeader>
+            <CardTitle>{route.name}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {route.steps.map((step, index) => (
+              <div key={step} className="flex items-center gap-3 rounded-lg border bg-background/70 p-3">
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-secondary text-xs font-semibold">{index + 1}</span>
+                <span className="text-sm font-medium">{step}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       ))}
     </div>
   );

@@ -15,6 +15,12 @@ def test_seeded_api_contract(tmp_path, monkeypatch):
 
     client = TestClient(main_module.app)
 
+    sources = client.get("/api/sources")
+    assert sources.status_code == 200
+    source_data = sources.json()
+    assert source_data[0]["title"] == "Speech and Language Processing, Third Edition draft"
+    assert source_data[0]["type"] == "book"
+
     chapters = client.get("/api/chapters")
     assert chapters.status_code == 200
     chapter_data = chapters.json()
@@ -39,12 +45,14 @@ def test_seeded_api_contract(tmp_path, monkeypatch):
     assert len(notes.json()) == len(seed_module.CHAPTERS)
 
     roadmap = client.get("/api/roadmap").json()
-    roadmap_steps = " ".join(step for phase in roadmap for step in phase["steps"])
+    roadmap_steps = " ".join(step for phase in roadmap["slp3"] for step in phase["steps"])
+    custom_routes = " ".join(route["name"] for route in roadmap["custom"])
     assert "KG-RAG" in roadmap_steps
     assert "GraphRAG" in roadmap_steps
     assert "Entity Linking" in roadmap_steps
+    assert "GraphRAG 论文路线" in custom_routes
 
-    report = client.get("/api/report").json()
+    report = client.get("/api/report?source_id=1").json()
     assert report["progress_percent"] > 0
     assert "老师您好" in report["wechat_text"]
 
@@ -54,7 +62,7 @@ def test_seeded_api_contract(tmp_path, monkeypatch):
 
     created = client.post(
         "/api/notes",
-        json={"chapter_id": 1, "title": "API test note", "content": "# API test", "tags": "test,KG"},
+        json={"source_id": 1, "chapter_id": 1, "title": "API test note", "content": "# API test", "tags": "test,KG"},
     )
     assert created.status_code == 201
     note_id = created.json()["id"]

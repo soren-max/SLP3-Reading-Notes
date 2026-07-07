@@ -2,6 +2,7 @@ from pydantic import BaseModel
 
 
 class ChapterBase(BaseModel):
+    source_id: int
     number: int
     title: str
     priority: str
@@ -29,6 +30,7 @@ class ChapterRead(ChapterBase):
 
 class ChapterListItem(BaseModel):
     id: int
+    source_id: int
     number: int
     title: str
     priority: str

@@ -1,6 +1,7 @@
-from app.database import SessionLocal, init_db
+from app.database import Base, SessionLocal, engine, init_db
 from app.models.chapter import Chapter
 from app.models.note import Note
+from app.models.source import Source
 
 
 def chapter(
@@ -15,6 +16,7 @@ def chapter(
 ) -> dict:
     concepts = tags[:4] + ["Reading Notes"]
     return {
+        "source_id": 1,
         "number": number,
         "title": title,
         "priority": priority,
@@ -105,18 +107,29 @@ NOTE_TEMPLATE = """# {number} {title}
 
 
 def seed() -> None:
+    Base.metadata.drop_all(bind=engine)
     init_db()
     db = SessionLocal()
     try:
-        db.query(Note).delete()
-        db.query(Chapter).delete()
-        db.commit()
+        source = Source(
+            id=1,
+            title="Speech and Language Processing, Third Edition draft",
+            type="book",
+            author_or_origin="Dan Jurafsky and James H. Martin",
+            research_direction="LLM, RAG, KG, GraphRAG, IE, Entity Linking, Knowledge Graph Reasoning",
+            description="默认内置的 NLP 重点阅读路线，围绕知识图谱、大语言模型推理、KG-RAG、GraphRAG、信息抽取和实体链接组织章节。",
+            status="进行中",
+            priority="高",
+        )
+        db.add(source)
+        db.flush()
         for item in CHAPTERS:
             chapter_obj = Chapter(**item)
             db.add(chapter_obj)
             db.flush()
             db.add(
                 Note(
+                    source_id=source.id,
                     chapter_id=chapter_obj.id,
                     title=f"{chapter_obj.number} {chapter_obj.title} 阅读笔记",
                     content=NOTE_TEMPLATE.format(

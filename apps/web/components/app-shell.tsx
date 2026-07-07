@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, FileText, GitBranch, Home, NotebookPen, Sparkles } from "lucide-react";
+import { BookOpen, FileText, GitBranch, Home, Library, NotebookPen, Sparkles } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
 const nav = [
   { href: "/", label: "Dashboard", icon: Home },
-  { href: "/chapters", label: "Chapters", icon: BookOpen },
+  { href: "/sources", label: "Sources", icon: Library },
+  { href: "/chapters", label: "SLP3", icon: BookOpen },
   { href: "/roadmap", label: "Roadmap", icon: GitBranch },
   { href: "/notes", label: "Notes", icon: NotebookPen },
   { href: "/report", label: "Report", icon: FileText },
@@ -25,8 +26,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Sparkles className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">AI Learning Workspace</p>
-              <h1 className="text-base font-semibold tracking-normal">KG + LLM 推理学习系统</h1>
+              <p className="text-sm text-muted-foreground">AI Research Notes Workspace</p>
+              <h1 className="text-base font-semibold tracking-normal">NLP · LLM · RAG · Knowledge Graph Reasoning</h1>
             </div>
           </Link>
           <nav className="flex gap-1 overflow-x-auto" aria-label="Primary navigation">

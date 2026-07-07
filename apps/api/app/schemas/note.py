@@ -4,7 +4,8 @@ from pydantic import BaseModel
 
 
 class NoteCreate(BaseModel):
-    chapter_id: int
+    source_id: int
+    chapter_id: int | None = None
     title: str
     content: str
     tags: str = ""
@@ -19,7 +20,8 @@ class NoteUpdate(BaseModel):
 
 class NoteRead(BaseModel):
     id: int
-    chapter_id: int
+    source_id: int
+    chapter_id: int | None
     title: str
     content: str
     tags: str

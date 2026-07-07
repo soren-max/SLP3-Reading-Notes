@@ -1,5 +1,5 @@
-def get_roadmap() -> list[dict]:
-    return [
+def get_roadmap() -> dict:
+    slp3 = [
         {
             "phase": "阶段一：LLM 基础",
             "goal": "建立大语言模型基础概念和训练范式的阅读框架。",
@@ -21,3 +21,11 @@ def get_roadmap() -> list[dict]:
             "steps": ["Question", "Entity Recognition", "Subgraph Retrieval", "Evidence Path Construction", "LLM Reasoning", "Answer with Evidence"],
         },
     ]
+    custom = [
+        {"name": "LLM 基础路线", "steps": ["Tokenization", "Embedding", "Transformer", "Post-training", "Evaluation"]},
+        {"name": "KG-RAG 路线", "steps": ["Dense Retrieval", "Entity Linking", "Subgraph Retrieval", "Evidence Path", "Answer Grounding"]},
+        {"name": "GraphRAG 论文路线", "steps": ["Graph Construction", "Community Detection", "Graph Retrieval", "Global/Local Search"]},
+        {"name": "信息抽取路线", "steps": ["NER", "Relation Extraction", "Event Extraction", "SRL", "Coreference"]},
+        {"name": "AI Agent 工程路线", "steps": ["Tool Use", "Memory", "Planning", "Evaluation", "Deployment"]},
+    ]
+    return {"slp3": slp3, "custom": custom}

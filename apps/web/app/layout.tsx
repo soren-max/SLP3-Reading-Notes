@@ -4,8 +4,8 @@ import "./globals.css";
 import { AppShell } from "@/components/app-shell";
 
 export const metadata: Metadata = {
-  title: "SLP3 KG-LLM Reading Notes",
-  description: "Interactive reading notes for Speech and Language Processing with KG-RAG and LLM reasoning focus.",
+  title: "AI Research Notes Workspace",
+  description: "A structured learning workspace for NLP, LLM, RAG and Knowledge Graph reasoning.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
