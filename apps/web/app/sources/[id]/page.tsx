@@ -35,6 +35,23 @@ export default async function SourceDetailPage({ params }: Props) {
   const chapters = await api.chaptersBySource(source.id);
   const directions = source.research_direction.split(",").map((item) => item.trim()).filter(Boolean);
 
+  // Build noteInfo map for chapter cards
+  const allNotes = await api.notes(new URLSearchParams({ source_id: String(source.id) }));
+  const noteInfoMap: Record<number, { hasNote: boolean; wordCount: number; noteId: number; updatedAt: string }> = {};
+  for (const note of allNotes) {
+    if (note.chapter_id) {
+      const wordCount = note.content
+        .replace(/[#*`\[\]()>|_~]/g, " ")
+        .replace(/\s+/g, " ").trim().split(" ").filter(Boolean).length;
+      noteInfoMap[note.chapter_id] = {
+        hasNote: true,
+        wordCount,
+        noteId: note.id,
+        updatedAt: note.updated_at,
+      };
+    }
+  }
+
   return (
     <div className="space-y-6">
       <section className="rounded-lg border bg-card/80 p-6 shadow-sm backdrop-blur-xl">
@@ -65,7 +82,7 @@ export default async function SourceDetailPage({ params }: Props) {
             章节目录
           </h3>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {chapters.map((chapter) => <ChapterCard key={chapter.id} chapter={chapter} />)}
+            {chapters.map((chapter) => <ChapterCard key={chapter.id} chapter={chapter} noteInfo={noteInfoMap[chapter.id]} />)}
           </div>
         </section>
       ) : (
