@@ -14,7 +14,7 @@
 
 本部分首先介绍 LLM 的基本概念及其在自然语言处理中的重要地位，随后引出 **Words** 与 **Tokens** 的区别。作者强调，大语言模型真正处理的对象不是自然语言文本本身，而是经过 Tokenizer 切分后的 Token 序列。Token 经过 **Embedding** 转换为向量表示后，输入 Transformer 模型完成下一 Token 的预测，因此 **Token 是现代 LLM 的基础数据表示**。
 
-从 Ch 4 开始，教材逐步展开语言模型的基础构件：Logistic Regression（线性分类基础）、N-gram Language Models（统计语言模型）、Neural Networks（表示学习和非线性变换），最终在 Ch 7 将这些知识串联为完整的 Large Language Model 体系。
+从 Ch 4 开始，教材逐步展开语言模型的基础构件：Logistic Regression（线性分类基础）、N-gram Language Models（统计语言模型）、Neural Networks（表示学习和非线性变换），并在 Ch 7 将这些知识串联为完整的 Large Language Model 体系。Ch 8 进一步进入 Transformer 架构，解释 self-attention、multi-head attention、residual stream、KV cache 和 LoRA 等现代 LLM 的核心机制。
 
 理解 **Token、Embedding 与 Transformer** 之间的关系，是后续学习语言模型、注意力机制以及生成模型的重要前提。
 
@@ -29,3 +29,4 @@
 | Ch 5 | N-gram Language Models | 统计语言模型、平滑方法 |
 | Ch 6 | Neural Networks | 表示学习、激活函数、Softmax |
 | Ch 7 | Large Language Models | 自回归生成、In-context Learning、训练三阶段、安全 |
+| Ch 8 | Transformers | Self-attention、QKV、Transformer Block、KV Cache、LoRA |
