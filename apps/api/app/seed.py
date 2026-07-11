@@ -515,12 +515,123 @@ NER 产生实体节点候选，Relation Extraction 产生边，Event Extraction 
 """
 
 
+CHAPTER_21_NOTE = r"""# Chapter 21 · Semantic Role Labeling
+
+> 本章关键词：**predicate、argument、semantic role、PropBank、FrameNet、selectional preference、event structure**。
+
+## 1. 章节主题
+
+Semantic Role Labeling（SRL）研究谓词与论元之间的语义关系，回答“谁对谁做了什么、何时、何地、以什么方式发生”等问题。
+
+SRL 提供一种 shallow semantic representation：它比主语、宾语等句法关系更接近事件意义，又没有完整逻辑语义表示那么复杂，因此是把自然语言映射为事件参与结构的重要中间层。
+
+## 2. Semantic Roles
+
+常见语义角色包括：
+
+- AGENT：主动引发事件的参与者；
+- EXPERIENCER：感知或经历某种状态的参与者；
+- FORCE：非自主事件原因；
+- THEME：受到事件影响或移动的对象；
+- INSTRUMENT：事件所使用的工具；
+- SOURCE / GOAL：移动或转移的起点与终点；
+- BENEFICIARY：事件受益者；
+- CONTENT：言说或认知事件的内容。
+
+语义角色不能与句法位置直接对应。主动句、被动句与论元结构交替会让同一角色出现在不同位置，因此 SRL 的目标是跨越表层词序恢复事件参与关系。
+
+## 3. Diathesis Alternations
+
+Diathesis alternation 指同一谓词的论元可以有不同句法实现。例如：
+
+`Doris gave the book to Cary.`
+
+`Doris gave Cary the book.`
+
+两句中 Doris 都是 AGENT，book 都是 THEME，Cary 都是 GOAL。语义角色表示能够越过表层差异，保留稳定的事件结构。
+
+## 4. Problems with Thematic Roles
+
+传统 thematic roles 存在若干困难：没有 universally accepted role set；角色内部可能需要进一步细分；AGENT、THEME 等概念难以用严格条件定义；不同谓词的论元结构差异很大。
+
+因此出现了 Proto-Agent / Proto-Patient、PropBank 和 FrameNet 等不同体系。它们不是完全等价的标签集，而是从不同角度平衡泛化性、词义细节与标注一致性。
+
+## 5. PropBank
+
+PropBank 为每个谓词词义定义 `ARG0`、`ARG1`、`ARG2` 等编号角色。通常 `ARG0` 接近 Proto-Agent，`ARG1` 接近 Proto-Patient，而 `ARG2–ARG4` 的含义取决于具体谓词。
+
+PropBank 还定义修饰角色，如 `ARGM-TMP`（时间）、`ARGM-LOC`（地点）、`ARGM-MNR`（方式）和 `ARGM-CAU`（原因）。编号角色依赖谓词的 frameset，因此使用时需要结合谓词词义解释。
+
+## 6. FrameNet
+
+FrameNet 基于 frame semantics。Frame 是一个包含背景知识、谓词和参与角色的场景结构；角色称为 frame elements，并区分 core roles 与 non-core roles。
+
+不同词可以激活同一 frame。例如 increase、rise 和 fall 都可与尺度变化 frame 相关。相比 PropBank 的逐谓词编号，FrameNet 更强调场景知识和语义概念的共享。
+
+## 7. Semantic Role Labeling
+
+SRL 通常包含五步：
+
+1. predicate identification；
+2. predicate sense disambiguation；
+3. argument identification；
+4. role classification；
+5. global decoding。
+
+传统模型依赖 constituency parse 或 dependency parse；神经模型可将 SRL 转化为带 predicate 条件的 BIO sequence labeling。无论方法如何，全局解码和角色约束都有助于避免相互冲突的论元结构。
+
+## 8. Selectional Preferences
+
+Selectional restriction 表示谓词对论元语义类型的要求，例如 eat 的 THEME 通常属于 FOOD。自然语言中的限制并不绝对，现代系统更常使用 selectional preference，以概率或关联强度表示谓词与论元类别之间的偏好。
+
+这类偏好可用于候选论元排序、异常关系检测与知识图谱 schema 验证，但不应把低频事实简单判定为错误。
+
+## 9. Primitive Decomposition
+
+Primitive decomposition 将复杂谓词分解为基础语义成分，例如：
+
+`KILL(x,y) ⇔ CAUSE(x, BECOME(NOT(ALIVE(y))))`
+
+它有利于因果与状态变化推理，但构建通用语义原语体系较为困难，也难以覆盖语言中的全部细微差异。
+
+## 10. 与知识图谱的关系
+
+SRL 可以将句子转换为事件参与结构：谓词对应事件或关系类型，arguments 对应实体节点，semantic roles 对应事件节点与实体节点之间的边。
+
+典型流程为：
+
+`Text → NER → Entity Linking → Predicate Detection → SRL → Event/Relation Mapping → Knowledge Graph`
+
+在 KG-RAG 中，SRL 可用于从候选证据中抽取“谁—做什么—对谁—何时何地”的结构，再与实体链接、关系抽取和事件时间图结合，提升多跳证据路径的可解释性。
+
+## 重点总结
+
+- SRL 以谓词—论元结构表达事件意义，能跨越主动/被动等表层句法差异。
+- PropBank 侧重谓词编号角色，FrameNet 侧重共享的场景框架；二者适合不同的标注与知识建模需求。
+- Selectional preferences 是概率偏好而非绝对规则，可辅助论元判断与 schema 验证。
+- SRL 为知识图谱提供事件节点、参与者角色和可解释的证据结构。
+
+## 导师可能提问
+
+- SRL 相比 dependency parsing 为事件抽取补充了什么信息？
+- PropBank 与 FrameNet 的角色体系有何差异，分别适合什么场景？
+- 如何将 SRL 输出映射为可用于 KG-RAG 的事件节点和角色边？
+
+## 后续补充资料
+
+- Palmer, Gildea, Kingsbury (2005), *The Proposition Bank*。
+- Gildea, Jurafsky (2002), *Automatic Labeling of Semantic Roles*。
+- 调研 predicate-aware encoder、span-based SRL 与 LLM structured extraction 的结合方式。
+"""
+
+
 NOTE_CONTENT_BY_NUMBER = {
     9: CHAPTER_9_NOTE,
     10: CHAPTER_10_NOTE,
     11: CHAPTER_11_NOTE,
     17: CHAPTER_17_NOTE,
     20: CHAPTER_20_NOTE,
+    21: CHAPTER_21_NOTE,
 }
 
 
@@ -659,7 +770,32 @@ CHAPTERS = [
             "ACE Event Extraction and TimeBank/TimeML annotation resources",
         ],
     ),
-    chapter(21, "Semantic Role Labeling", "高", "精读", 88, "SRL 提供谓词-论元结构，可辅助事件抽取、证据路径和可解释推理。", ["IE", "Reasoning", "KG"]),
+    chapter(
+        21,
+        "Semantic Role Labeling",
+        "高",
+        "精读",
+        92,
+        "SRL 将句子转化为谓词—论元事件结构，可辅助事件抽取、证据路径构建和知识图谱增强推理的可解释性。",
+        ["IE", "Reasoning", "KG", "Event Extraction", "SRL"],
+        "已完成",
+        positioning="第 21 章连接浅层语义表示、事件参与结构与知识图谱中的事件节点和角色边。",
+        core_concepts=["Semantic Role", "PropBank", "FrameNet", "Selectional Preference", "Predicate-Argument Structure"],
+        outline="从语义角色与论元交替出发，对比 PropBank 和 FrameNet，梳理 SRL 的识别—消歧—标注—全局解码流程，并讨论选择偏好与原语分解。",
+        formulas_algorithms="SRL 可建模为带 predicate 条件的 BIO 序列标注，并通过全局解码满足论元结构约束；原语分解示例为 KILL(x,y) ⇔ CAUSE(x, BECOME(NOT(ALIVE(y))))。",
+        examples="“Doris gave Cary the book”中 Doris/AGENT、book/THEME、Cary/GOAL 可映射为发布或转移事件节点连接到各实体的角色边。",
+        summary="SRL 提取的不是简单的词法关系，而是可跨句法形式对齐的事件参与结构；它是将文本证据映射为可解释知识图谱事件的有效中间表示。",
+        mentor_questions=[
+            "SRL 相比 dependency parsing 为事件抽取补充了什么信息？",
+            "PropBank 与 FrameNet 的角色体系有何差异，分别适合什么场景？",
+            "如何将 SRL 输出映射为可用于 KG-RAG 的事件节点和角色边？",
+        ],
+        resources=[
+            "Speech and Language Processing, Third Edition draft, Chapter 21",
+            "Palmer, Gildea, Kingsbury (2005), The Proposition Bank",
+            "Gildea, Jurafsky (2002), Automatic Labeling of Semantic Roles",
+        ],
+    ),
     chapter(23, "Coreference Resolution and Entity Linking", "高", "精读", 97, "指代消解与实体链接负责跨句实体归并和知识库对齐，是 GraphRAG 证据一致性的关键。", ["Entity Linking", "KG", "Reasoning", "GraphRAG"]),
     chapter(3, "N-gram Language Models", "中", "理解", 58, "用于理解语言模型历史和概率建模思想，对现代 LLM 是背景知识。", ["LLM"], "已完成"),
     chapter(4, "Logistic Regression", "中", "理解", 62, "分类基础有助于理解传统 NER/IE 特征模型和评价方式。", ["NER", "IE"]),
