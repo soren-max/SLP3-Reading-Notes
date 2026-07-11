@@ -230,9 +230,99 @@ Post-training 决定模型如何使用其已有能力。对知识图谱增强推
 """
 
 
+CHAPTER_11_NOTE = r"""# Chapter 11 · Retrieval-based Models
+
+> 本章关键词：**Information Retrieval、BM25、dense retrieval、RAG、retriever、reranker、KG-RAG**。
+
+## 1. 本章主题
+
+本章介绍 Information Retrieval、dense retrieval 和 Retrieval-Augmented Generation（RAG）。其核心目标是让语言模型在生成答案前访问外部知识，而不是完全依赖模型参数中的记忆。
+
+一个基础 RAG 系统由 retriever 和 generator 两部分组成：retriever 根据 query 从文档集合取回相关 passages，generator 将 query 和 passages 作为上下文，生成最终回答。检索质量决定模型是否能看到正确证据，生成质量决定模型是否正确使用证据。
+
+## 2. Sparse Retrieval
+
+Sparse retrieval 将 query 和 document 表示为词表维度上的稀疏向量。常见方法包括 tf-idf 和 BM25。
+
+- TF 衡量一个词在当前文档中的重要性；
+- IDF 衡量该词在整个文档集合中的区分能力；
+- BM25 在此基础上加入词频饱和和文档长度归一化，通常是强而稳定的词法检索基线。
+
+倒排索引建立“词项 → 文档列表”的映射，因此可以快速定位包含查询词的候选文档，而无须逐篇扫描整个集合。
+
+## 3. Dense Retrieval
+
+Dense retrieval 使用语言模型将 query 和 document 编码为低维向量，并通过 dot product 或 cosine similarity 计算相关性。其主要优势是处理 vocabulary mismatch：即使 query 和 document 未使用相同词语，只要语义接近，仍可能被匹配。
+
+Bi-encoder 分别编码 query 与 document，可预先索引文档向量，效率高，适合大规模召回。Cross-encoder 联合编码 query 与 document，判断更精确但计算更昂贵，适合对少量候选进行 reranking。
+
+一个常见的两阶段结构是：
+
+1. bi-encoder 从全库召回 Top-k 候选；
+2. cross-encoder 对候选重排；
+3. 将高质量证据交给 generator。
+
+## 4. Retrieval Evaluation
+
+Precision 衡量返回结果中相关文档的比例，Recall 衡量全部相关文档中被成功取回的比例。二者需要结合任务目标取舍：问答的证据召回不足会直接限制后续生成，而候选过多又会引入噪声和上下文成本。
+
+对于 ranked retrieval，还应考虑相关文档的排名位置。Average Precision（AP）对单个 query 在每个相关结果出现位置的 precision 求平均；MAP 则对多个 query 的 AP 再求平均。实践中还常报告 Recall@k、MRR 或 nDCG，以观察证据是否出现在模型可见的前几名。
+
+## 5. Retrieval-Augmented Generation
+
+基本 RAG 包括三步：
+
+1. retriever 返回 Top-k passages；
+2. 将 passages、query 和 instruction 组成 prompt；
+3. LLM 基于 prompt 生成答案。
+
+RAG 可以接入动态知识、企业私有文档和模型训练完成后出现的新知识，也能在回答中提供引用。它并不自动保证真实性：系统仍需确保 retrieved context 覆盖问题、噪声受控，并要求 generator 基于证据作答或在证据不足时拒答。
+
+## 6. RAG 的主要错误来源
+
+RAG 的错误可能来自多个环节：
+
+- 文档集合中没有正确知识；
+- chunk 划分不合理；
+- retriever 未召回正确证据；
+- 正确证据排名过低；
+- 上下文包含过多噪声；
+- LLM 没有正确使用证据；
+- 答案与引用不一致。
+
+因此，必须分别评价 retrieval 和 generation。端到端答案分数低时，应先定位是语料、切分、召回、重排、上下文构造，还是生成与引用阶段的问题。
+
+## 7. 对 KG-RAG 的意义
+
+KG-RAG 在普通文本 RAG 的基础上加入 entity linking 和 graph retrieval。系统可以检索实体、三元组、邻居和多跳路径，再将这些结构化证据与文本 passages 一起交给 LLM。
+
+GraphRAG 进一步把检索对象扩展为子图和社区摘要，适合关系型问题、多跳问题和全局性问题。一个关键设计原则是按问题选择证据粒度：实体事实可优先检索三元组，关系解释可联合路径与段落，全局概览可使用社区摘要。
+
+## 重点总结
+
+- Sparse retrieval 依赖词项匹配，BM25 是必须保留的强基线；dense retrieval 缓解词汇不匹配。
+- Bi-encoder 擅长高效召回，cross-encoder 擅长精确重排，二者通常组合使用。
+- RAG 的可靠性取决于检索与生成两个独立环节，不能只看最终答案。
+- KG-RAG 与 GraphRAG 通过实体、路径、子图和社区摘要，为多跳与关系型问题提供结构化证据。
+
+## 导师可能提问
+
+- Sparse retrieval 与 dense retrieval 各自解决什么问题，为什么 BM25 仍是重要基线？
+- 为什么 bi-encoder 常用于召回、cross-encoder 常用于 reranking？
+- 如何定位一个 KG-RAG 回答错误究竟来自检索、证据组织还是生成？
+
+## 后续补充资料
+
+- Robertson and Zaragoza (2009), *The Probabilistic Relevance Framework: BM25 and Beyond*。
+- Karpukhin et al. (2020), *Dense Passage Retrieval for Open-Domain Question Answering*。
+- Lewis et al. (2020), *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*。
+"""
+
+
 NOTE_CONTENT_BY_NUMBER = {
     9: CHAPTER_9_NOTE,
     10: CHAPTER_10_NOTE,
+    11: CHAPTER_11_NOTE,
 }
 
 
@@ -293,7 +383,32 @@ CHAPTERS = [
             "Rafailov et al. (2023), Direct Preference Optimization",
         ],
     ),
-    chapter(11, "Retrieval-based Models", "高", "精读", 98, "检索模型直接连接 RAG、KG-RAG 和 GraphRAG，是后续研究的关键章节。", ["RAG", "KG", "GraphRAG", "Reasoning"], "阅读中"),
+    chapter(
+        11,
+        "Retrieval-based Models",
+        "高",
+        "精读",
+        98,
+        "检索模型直接连接 RAG、KG-RAG 和 GraphRAG：文本与图结构证据的召回、重排、组织和验证，共同决定知识增强推理的可靠性。",
+        ["RAG", "KG", "GraphRAG", "Reasoning", "Retrieval"],
+        "已完成",
+        positioning="第 11 章建立从词法/语义检索到 RAG、KG-RAG 与 GraphRAG 的证据增强生成主线。",
+        core_concepts=["BM25", "Dense Retrieval", "Bi-encoder", "Cross-encoder", "RAG"],
+        outline="从 sparse retrieval 与倒排索引出发，对比 dense retrieval 的语义匹配能力，再讨论检索评估、RAG 流程、错误诊断与图结构检索。",
+        formulas_algorithms="稀疏检索以 tf-idf/BM25 匹配词项；稠密检索以 query/document 向量的 dot product 或 cosine similarity 打分。两阶段系统先 Top-k 召回，再以 cross-encoder 重排。",
+        examples="对 KG-RAG 问题，先链接 query 实体并召回相关三元组、邻居和文本段落，再比较候选多跳路径，将受支持的结构化与非结构化证据输入 LLM。",
+        summary="RAG 不是单一模型，而是一条可诊断的检索—证据组织—生成链路。需要分别评价召回覆盖、排名质量、上下文噪声、证据遵循和引用一致性。",
+        mentor_questions=[
+            "Sparse retrieval 与 dense retrieval 各自解决什么问题，为什么 BM25 仍是重要基线？",
+            "为什么 bi-encoder 常用于召回、cross-encoder 常用于 reranking？",
+            "如何定位一个 KG-RAG 回答错误究竟来自检索、证据组织还是生成？",
+        ],
+        resources=[
+            "Speech and Language Processing, Third Edition draft, Chapter 11",
+            "Karpukhin et al. (2020), Dense Passage Retrieval for Open-Domain Question Answering",
+            "Lewis et al. (2020), Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks",
+        ],
+    ),
     chapter(17, "Sequence Labeling for POS and Named Entities", "高", "精读", 95, "NER 是知识图谱构建、问题实体识别和实体链接的入口任务。", ["NER", "KG", "IE", "Entity Linking"]),
     chapter(20, "Information Extraction", "高", "精读", 99, "信息抽取覆盖关系、事件和槽填充，是从文本构建知识图谱的核心技术。", ["IE", "KG", "Relation Extraction", "RAG"]),
     chapter(21, "Semantic Role Labeling", "高", "精读", 88, "SRL 提供谓词-论元结构，可辅助事件抽取、证据路径和可解释推理。", ["IE", "Reasoning", "KG"]),
