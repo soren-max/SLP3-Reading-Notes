@@ -417,11 +417,110 @@ NER 是知识图谱构建的基础步骤，但 NER 结果仍只是文本 mention
 """
 
 
+CHAPTER_20_NOTE = r"""# Chapter 20 · Information Extraction: Relations, Events, and Time
+
+> 本章关键词：**relation extraction、event extraction、temporal analysis、TimeML、template filling、knowledge graph**。
+
+## 1. 章节主题
+
+本章讨论如何从非结构化文本中抽取关系、事件和时间信息，并组织成结构化数据。第 17 章的 NER 主要识别实体 mention；本章进一步识别实体之间的关系、实体参与的事件、事件发生时间和事件之间的时间顺序。
+
+因此，本章是知识图谱与事件知识图谱构建的核心基础：实体成为节点候选，关系成为边，事件成为可连接多个论元的节点，时间关系让图具备演化与推理能力。
+
+## 2. Relation Extraction
+
+Relation Extraction 识别实体之间的语义关系，典型输出为三元组：
+
+`(head entity, relation, tail entity)`
+
+例如：`(刘慈欣, author_of, 三体)`。关系通常有方向，并受到实体类型和 ontology schema 的约束。模型还必须能够输出 `no_relation`，避免为无关实体对强行生成关系。
+
+## 3. Relation Extraction Methods
+
+主要方法包括：
+
+1. Pattern-based extraction；
+2. Supervised relation classification；
+3. Bootstrapping；
+4. Distant supervision；
+5. Open Information Extraction。
+
+Pattern 方法精度高但召回率低；监督方法效果稳定，却需要较多标注数据。Bootstrapping 从少量 seed patterns 或 seed tuples 迭代扩展，需警惕 semantic drift。Distant supervision 用已有知识图谱自动构造训练数据，规模大但有标签噪声。Open IE 不预定义关系集合，直接抽取文本关系短语，后续还需做关系规范化。
+
+## 4. Event Extraction
+
+Event Extraction 识别文本中的事件 mention，并提取事件类型、trigger、arguments 和属性。事件可由动词或名词表达；论元可以包括参与者、地点、时间、金额和产品等信息。
+
+事件比二元关系更适合表达动态场景。例如一次产品发布事件可同时连接发布机构、产品和发布时间，而不必把所有信息拆为彼此脱离的二元边。
+
+## 5. Temporal Representation
+
+时间分析通常包括：
+
+1. temporal expression recognition；
+2. temporal normalization；
+3. event-time linking；
+4. temporal relation classification。
+
+时间表达往往需要结合 document creation time 或 anchor event 归一化，标准时间通常采用 ISO 8601。Allen interval algebra 用 before、after、overlaps、meets、starts、finishes、during 和 equals 等关系描述时间区间之间的关系，为事件顺序推理提供形式化语言。
+
+## 6. Aspect
+
+Aspect 描述事件的内部时间结构，主要类别包括 state、activity、accomplishment 和 achievement。它有助于判断事件是否持续、是否完成、是否存在自然终点，从而支持更细粒度的时间关系推理。
+
+## 7. TimeBank and TimeML
+
+TimeBank 使用 TimeML 标注事件、时间表达及其关系。主要对象包括：
+
+- `EVENT`；
+- `TIMEX3`；
+- `TLINK`；
+- `ALINK`；
+- `SLINK`。
+
+这种表示能够把文本转换为事件时间图，方便查询事件参与者、发生时间及先后依赖。
+
+## 8. Template Filling
+
+Template Filling 识别某类预定义场景，并为模板中的槽位填充值。系统通常先进行 template recognition，再进行 role-filler extraction。
+
+现代 LLM 的 JSON structured extraction 可看作 schema-guided template filling：通过固定字段、类型约束和证据片段，使抽取输出更便于写入下游数据库或知识图谱。
+
+## 9. 与知识图谱的关系
+
+NER 产生实体节点候选，Relation Extraction 产生边，Event Extraction 产生事件节点，Temporal Analysis 为事件添加时间及先后关系。完整流程为：
+
+`Text → NER → Entity Linking → Relation/Event Extraction → Temporal Normalization → Entity/Event Resolution → Knowledge Graph`
+
+在 KG-RAG 中，这条链路可以把文档转化为可检索、可追溯的结构化证据；回答时再将相关实体、关系、事件路径与原文证据共同提供给 LLM。
+
+## 重点总结
+
+- 关系抽取构造实体边，事件抽取组织多论元动态事实，时间分析提供顺序与持续性约束。
+- 监督、弱监督、开放抽取在标注成本、schema 约束与噪声控制上各有取舍。
+- 事件与时间图使知识图谱能表达“谁在何时做了什么”，支持时间敏感的检索与推理。
+- 结构化 JSON 抽取应以 schema、类型约束和证据定位降低幻觉与规范化成本。
+
+## 导师可能提问
+
+- 为什么动态场景通常更适合建模为事件，而不只是多条二元关系？
+- Distant supervision 的标签噪声来自哪里，如何缓解？
+- 如何把时间归一化和事件关系用于时间敏感的 KG-RAG 问答？
+
+## 后续补充资料
+
+- ACE Event Extraction 与 TimeBank/TimeML 标注规范。
+- Mintz et al. (2009), *Distant Supervision for Relation Extraction without Labeled Data*。
+- 调研 LLM schema-guided extraction 的验证、实体消歧和时间归一化策略。
+"""
+
+
 NOTE_CONTENT_BY_NUMBER = {
     9: CHAPTER_9_NOTE,
     10: CHAPTER_10_NOTE,
     11: CHAPTER_11_NOTE,
     17: CHAPTER_17_NOTE,
+    20: CHAPTER_20_NOTE,
 }
 
 
@@ -534,7 +633,32 @@ CHAPTERS = [
             "Lample et al. (2016), Neural Architectures for Named Entity Recognition",
         ],
     ),
-    chapter(20, "Information Extraction", "高", "精读", 99, "信息抽取覆盖关系、事件和槽填充，是从文本构建知识图谱的核心技术。", ["IE", "KG", "Relation Extraction", "RAG"]),
+    chapter(
+        20,
+        "Information Extraction",
+        "高",
+        "精读",
+        99,
+        "信息抽取将文本转化为实体、关系、事件和时间图，是构建可检索、可追溯知识图谱，并为 KG-RAG 提供结构化证据的核心技术。",
+        ["IE", "KG", "Relation Extraction", "Event Extraction", "Temporal Analysis"],
+        "已完成",
+        positioning="第 20 章把实体识别扩展为关系、事件和时间抽取，构成从文本到知识图谱与事件知识图谱的完整信息抽取主线。",
+        core_concepts=["Relation Extraction", "Event Extraction", "Temporal Analysis", "TimeML", "Template Filling"],
+        outline="从关系三元组与抽取范式出发，学习事件的 trigger/argument 表示、时间归一化与区间关系，再连接 TimeML 和 schema-guided template filling。",
+        formulas_algorithms="关系抽取输出 (head, relation, tail) 并需包含 no_relation；时间区间可用 Allen algebra 表示 before、overlaps、during 等关系；模板填充按 schema 提取场景角色。",
+        examples="“某公司于 2025 年发布产品”可抽取发布事件、组织/产品/时间论元，并写入事件节点及时间边；KG-RAG 可据此检索事件路径和原文证据。",
+        summary="关系、事件与时间抽取共同将文本事实组织成可推理图结构。可靠系统需要类型/schema 约束、时间归一化、实体/事件消歧与证据可追溯性。",
+        mentor_questions=[
+            "为什么动态场景通常更适合建模为事件，而不只是多条二元关系？",
+            "Distant supervision 的标签噪声来自哪里，如何缓解？",
+            "如何把时间归一化和事件关系用于时间敏感的 KG-RAG 问答？",
+        ],
+        resources=[
+            "Speech and Language Processing, Third Edition draft, Chapter 20",
+            "Mintz et al. (2009), Distant Supervision for Relation Extraction without Labeled Data",
+            "ACE Event Extraction and TimeBank/TimeML annotation resources",
+        ],
+    ),
     chapter(21, "Semantic Role Labeling", "高", "精读", 88, "SRL 提供谓词-论元结构，可辅助事件抽取、证据路径和可解释推理。", ["IE", "Reasoning", "KG"]),
     chapter(23, "Coreference Resolution and Entity Linking", "高", "精读", 97, "指代消解与实体链接负责跨句实体归并和知识库对齐，是 GraphRAG 证据一致性的关键。", ["Entity Linking", "KG", "Reasoning", "GraphRAG"]),
     chapter(3, "N-gram Language Models", "中", "理解", 58, "用于理解语言模型历史和概率建模思想，对现代 LLM 是背景知识。", ["LLM"], "已完成"),

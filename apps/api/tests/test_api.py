@@ -59,6 +59,10 @@ def test_seeded_api_contract(tmp_path, monkeypatch):
     chapter_17_note = next(note for note in notes.json() if note["chapter_id"] == chapter_17["id"])
     assert "Conditional Random Field" in chapter_17_note["content"]
     assert "entity linking" in chapter_17_note["content"]
+    chapter_20 = next(chapter for chapter in chapter_data if chapter["number"] == 20)
+    chapter_20_note = next(note for note in notes.json() if note["chapter_id"] == chapter_20["id"])
+    assert "Event Extraction" in chapter_20_note["content"]
+    assert "Temporal Analysis" in chapter_20_note["content"]
 
     roadmap = client.get("/api/roadmap").json()
     roadmap_steps = " ".join(step for phase in roadmap["slp3"] for step in phase["steps"])
