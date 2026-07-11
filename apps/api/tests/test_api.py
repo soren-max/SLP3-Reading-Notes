@@ -47,6 +47,10 @@ def test_seeded_api_contract(tmp_path, monkeypatch):
     chapter_9_note = next(note for note in notes.json() if note["chapter_id"] == chapter_9["id"])
     assert "Masked Language Modeling" in chapter_9_note["content"]
     assert "KG-RAG" in chapter_9_note["content"]
+    chapter_10 = next(chapter for chapter in chapter_data if chapter["number"] == 10)
+    chapter_10_note = next(note for note in notes.json() if note["chapter_id"] == chapter_10["id"])
+    assert "Direct Preference Optimization" in chapter_10_note["content"]
+    assert "Test-Time Compute" in chapter_10_note["content"]
 
     roadmap = client.get("/api/roadmap").json()
     roadmap_steps = " ".join(step for phase in roadmap["slp3"] for step in phase["steps"])

@@ -135,6 +135,107 @@ NER 是知识图谱构建的入口：先识别 entity mention，再通过 entity
 """
 
 
+CHAPTER_10_NOTE = r"""# Chapter 10 · Post-training
+
+> 本章关键词：**instruction tuning、preference alignment、reward model、DPO、test-time compute**。
+
+## 1. 本章主题
+
+本章讨论大语言模型完成预训练后的三个关键环节：instruction tuning、preference alignment 和 test-time compute。
+
+预训练模型以预测下一个 token 为目标，因此具备广泛的语言能力，却不必然能正确理解和完成用户指令。Post-training 的作用是调整模型行为：让它更会遵循指令、更符合人类偏好，并能在复杂任务上使用更多推理计算。
+
+## 2. Instruction Tuning
+
+Instruction tuning 也称 supervised fine-tuning（SFT）。训练样本通常由自然语言指令、任务输入和目标回答组成；模型继续最小化语言模型的 cross-entropy loss，学习在给定指令下生成合适回答。
+
+它与单任务微调的差别在于：SFT 往往覆盖多个任务和表达方式，目标是提升模型在新任务上的一般指令遵循能力，而不只是记住某一种标签映射。
+
+## 3. Preference Learning
+
+即使经过 instruction tuning，模型仍可能给出不安全、不忠实或帮助性不足的回答。Preference learning 使用同一 prompt 下多个候选回答之间的偏好关系继续训练模型。
+
+常见的一条偏好数据写作 \((x, o_w, o_l)\)：
+
+- \(x\)：prompt；
+- \(o_w\)：preferred output（获偏好的回答）；
+- \(o_l\)：dispreferred output（未获偏好的回答）。
+
+这类数据直接表达“哪个回答更好”，但“更好”应由明确标准定义，例如帮助性、无害性、证据充分性与事实忠实度。
+
+## 4. Reward Model
+
+Reward model 接收 prompt 和回答，输出一个标量分数。Bradley–Terry model 用两个回答 reward 的差值表示偏好概率：
+
+\[
+P(o_w \succ o_l \mid x) = \sigma\bigl(r(x, o_w) - r(x, o_l)\bigr)
+\]
+
+Reward model 可用于模型对齐，也可用于 best-of-N candidate selection；但 reward 只反映训练数据中的偏好信号，不能直接等同于事实正确性。因此，在知识密集任务中仍需结合外部证据与事实验证。
+
+## 5. Preference Alignment
+
+从强化学习视角看，LLM 是 policy，生成 token 是 action，当前上下文是 state，reward model 为完整回答提供 reward。为防止优化后的模型过度偏离原模型，目标函数通常加入相对于 reference policy 的 KL penalty：
+
+\[
+\max_\pi\; \mathbb{E}[r(x, y)] - \beta\, D_{\mathrm{KL}}\bigl(\pi(\cdot\mid x)\,\|\,\pi_{\mathrm{ref}}(\cdot\mid x)\bigr)
+\]
+
+KL 项相当于行为约束：模型可以为偏好而调整，但不应丢失预训练或 SFT 阶段已有的通用能力。
+
+## 6. DPO
+
+Direct Preference Optimization（DPO）直接利用 preference pairs 训练模型：提高 preferred output 的概率，降低 dispreferred output 的概率，同时以 reference model 约束更新幅度。
+
+DPO 不需要单独训练显式 reward model，训练流程通常比完整的 reward model + PPO 路线更简单。它的优势是工程链路较短；其效果仍取决于偏好数据的覆盖范围、标注准则与参考模型的质量。
+
+## 7. Test-Time Compute
+
+Test-time compute 指在推理阶段增加计算。教材重点介绍 chain-of-thought prompting：通过分步推理 demonstrations 引导模型解决复杂问题。
+
+在 KG-RAG 中，test-time compute 可具体表现为：
+
+- 问题分解；
+- 实体识别与实体链接；
+- 子图或候选证据检索；
+- 候选路径比较；
+- 证据验证与答案生成前的事实一致性检查。
+
+这里增加的不是模型参数，而是为了可靠推理而执行的中间步骤、搜索和验证。
+
+## 8. 对研究方向的意义
+
+Post-training 决定模型如何使用其已有能力。对知识图谱增强推理而言，SFT 可以教模型遵守抽取、检索与引用流程；preference alignment 可以奖励有证据、路径正确和合理拒答的输出；test-time compute 则可以增加多跳检索与验证步骤。
+
+一个可操作的研究问题是：将“答案是否可由检索到的知识图谱路径支撑”转化为偏好数据或奖励信号，并在推理时显式保留检索、比较和验证轨迹。
+
+## 重点总结
+
+- Post-training 将“会续写”的预训练模型转化为更能遵循指令、对齐偏好和完成复杂任务的助手。
+- SFT 学习高质量示范；偏好学习学习回答之间的相对优劣。
+- Reward 不能替代事实正确性，知识密集任务需要外部证据验证。
+- DPO 以更简洁的训练链路直接使用偏好对；test-time compute 则在推理阶段补充搜索与验证。
+
+## 导师可能提问
+
+- Instruction tuning、preference alignment 和 test-time compute 分别改变模型的什么能力？
+- 为什么 reward model 的高分不能保证答案事实正确？
+- 如何把 KG-RAG 的证据路径正确性设计成可训练的偏好或奖励信号？
+
+## 后续补充资料
+
+- Ouyang et al. (2022), *Training language models to follow instructions with human feedback*。
+- Rafailov et al. (2023), *Direct Preference Optimization: Your Language Model is Secretly a Reward Model*。
+- 比较 PPO、DPO 与基于 verifier 的 test-time scaling 在知识密集推理任务中的取舍。
+"""
+
+
+NOTE_CONTENT_BY_NUMBER = {
+    9: CHAPTER_9_NOTE,
+    10: CHAPTER_10_NOTE,
+}
+
+
 CHAPTERS = [
     chapter(2, "Words and Tokens", "高", "精读", 90, "Tokenization 决定实体边界、检索粒度和 LLM 输入表示，是 NER 与实体链接的前置基础。", ["LLM", "NER", "Entity Linking", "KG"], "已完成"),
     chapter(5, "Embeddings", "高", "精读", 92, "Embedding 是 dense retrieval、实体表示、语义匹配和向量检索的核心基础。", ["LLM", "RAG", "KG", "Reasoning"], "已完成"),
@@ -166,7 +267,32 @@ CHAPTERS = [
             "比较 BERT、RoBERTa、DeBERTa 的预训练策略与下游迁移表现",
         ],
     ),
-    chapter(10, "Post-training", "高", "精读", 91, "Post-training/alignment 影响 LLM 在证据遵循、问答和工具调用中的行为。", ["LLM", "Reasoning", "RAG"], "已完成"),
+    chapter(
+        10,
+        "Post-training",
+        "高",
+        "精读",
+        95,
+        "Post-training 决定模型如何使用已有能力：SFT 可教会模型遵守 KG-RAG 的抽取与检索流程，偏好对齐可奖励有证据、路径正确和合理拒答的输出，test-time compute 可加入多跳检索与验证。",
+        ["LLM", "Alignment", "Reasoning", "RAG", "KG-RAG"],
+        "已完成",
+        positioning="第 10 章从后训练与推理时计算两个层面，连接模型行为对齐、证据遵循和知识图谱增强推理。",
+        core_concepts=["Instruction Tuning", "Preference Alignment", "Reward Model", "DPO", "Test-Time Compute"],
+        outline="依次理解 SFT 的多任务指令学习、偏好对的相对监督、reward model 与 KL 约束、DPO 的直接优化，以及推理阶段的分步计算。",
+        formulas_algorithms="偏好概率可写为 P(ow ≻ ol|x)=σ(r(x,ow)-r(x,ol))；对齐目标在期望 reward 外加入相对 reference policy 的 KL penalty，以限制策略偏移。",
+        examples="在 KG-RAG 中，SFT 学习抽取—检索—回答流程；偏好数据奖励受证据支撑的答案；推理时通过问题分解、子图检索、路径比较和事实验证增加计算。",
+        summary="后训练塑造模型行为而非凭空赋予知识。可靠的知识增强推理需要高质量偏好标准、外部证据验证和显式的推理时搜索。",
+        mentor_questions=[
+            "Instruction tuning、preference alignment 和 test-time compute 分别改变模型的什么能力？",
+            "为什么 reward model 的高分不能保证答案事实正确？",
+            "如何把 KG-RAG 的证据路径正确性设计成可训练的偏好或奖励信号？",
+        ],
+        resources=[
+            "Speech and Language Processing, Third Edition draft, Chapter 10",
+            "Ouyang et al. (2022), Training language models to follow instructions with human feedback",
+            "Rafailov et al. (2023), Direct Preference Optimization",
+        ],
+    ),
     chapter(11, "Retrieval-based Models", "高", "精读", 98, "检索模型直接连接 RAG、KG-RAG 和 GraphRAG，是后续研究的关键章节。", ["RAG", "KG", "GraphRAG", "Reasoning"], "阅读中"),
     chapter(17, "Sequence Labeling for POS and Named Entities", "高", "精读", 95, "NER 是知识图谱构建、问题实体识别和实体链接的入口任务。", ["NER", "KG", "IE", "Entity Linking"]),
     chapter(20, "Information Extraction", "高", "精读", 99, "信息抽取覆盖关系、事件和槽填充，是从文本构建知识图谱的核心技术。", ["IE", "KG", "Relation Extraction", "RAG"]),
@@ -248,7 +374,7 @@ def seed() -> None:
                     source_id=source.id,
                     chapter_id=chapter_obj.id,
                     title=f"{chapter_obj.number} {chapter_obj.title} 阅读笔记",
-                    content=CHAPTER_9_NOTE if chapter_obj.number == 9 else NOTE_TEMPLATE.format(
+                    content=NOTE_CONTENT_BY_NUMBER.get(chapter_obj.number) or NOTE_TEMPLATE.format(
                         number=chapter_obj.number,
                         title=chapter_obj.title,
                         positioning=chapter_obj.positioning,
