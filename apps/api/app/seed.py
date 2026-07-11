@@ -13,9 +13,10 @@ def chapter(
     relation: str,
     tags: list[str],
     status: str = "未开始",
+    **details: object,
 ) -> dict:
     concepts = tags[:4] + ["Reading Notes"]
-    return {
+    data = {
         "source_id": 1,
         "number": number,
         "title": title,
@@ -42,6 +43,681 @@ def chapter(
         ],
         "tags": tags,
     }
+    data.update(details)
+    return data
+
+
+CHAPTER_9_NOTE = r"""# Chapter 9 · Masked Language Models
+
+> 本章关键词：**双向编码器、掩码语言建模（MLM）、上下文表示、预训练—微调、序列标注**。
+
+## 1. 本章主题
+
+本章介绍以 BERT 为代表的 **Masked Language Model（MLM）**。它不同于从左到右预测下一个 token 的 causal language model：MLM 会遮盖输入中的部分 token，再利用左右两侧上下文恢复原 token。
+
+因此，MLM 通常使用 bidirectional Transformer encoder。它的核心产物不是连续生成的文本，而是每个 token 的上下文相关表示，尤其适合语言理解和信息抽取任务。
+
+## 2. Bidirectional Transformer Encoder
+
+Causal Transformer 使用 attention mask，禁止当前位置关注未来 token；bidirectional encoder 则移除这一限制，让每个 token 都能关注输入序列中的所有位置。
+
+这种双向上下文特别适合需要理解整段输入的任务，例如：
+
+- named entity recognition（NER）；
+- text classification；
+- relation extraction；
+- entity linking；
+- natural language inference（NLI）。
+
+## 3. Masked Language Modeling
+
+BERT 预训练时，随机选择约 **15%** 的 token 进行扰动：
+
+- 80% 替换为 `[MASK]`；
+- 10% 替换为随机 token；
+- 10% 保持不变。
+
+模型根据完整上下文预测这些位置原来的 token。若 \(M\) 是被选择的位置集合，训练目标只在这些位置计算交叉熵：
+
+\[
+\mathcal{L}_{\mathrm{MLM}} = - \sum_{i \in M} \log p_\theta(x_i \mid \tilde{x})
+\]
+
+其中，\(x_i\) 是原 token，\(\tilde{x}\) 是扰动后的输入。MLM 可以看作一种 denoising learning：先破坏输入，再训练模型恢复原始信息。
+
+## 4. Contextual Embeddings
+
+Static embedding 为一个词提供固定向量；contextual embedding 则会为同一个词在不同上下文中的实例生成不同向量。
+
+例如，“**苹果发布了手机**”和“**吃了一个苹果**”中的“苹果”应有不同表示：前者更接近公司实体，后者更接近食物。这样的上下文敏感性使 MLM encoder 适合词义消歧、实体类型判断和实体链接。
+
+## 5. Pretrain–Fine-tune Paradigm
+
+模型先在大规模无标注文本上完成 MLM 预训练，学习通用语言表示；再在少量有标注数据上添加 task-specific head 并进行微调。这是一种 transfer learning：将预训练获得的语言知识迁移到具体下游任务。
+
+实际使用时，需要区分两层能力：预训练提供可迁移的表示空间，微调则让表示适配任务标签、领域术语和评价目标。
+
+## 6. Fine-Tuning for Classification
+
+对于 sequence classification，BERT 通常在序列开头加入 `[CLS]`，取其最后一层向量作为整段文本的表示，再送入分类器。
+
+对于 sequence-pair classification，输入两个由 `[SEP]` 分隔的序列。这一形式可用于自然语言推理、语义匹配，以及问题与候选证据的相关性判断。
+
+## 7. Named Entity Recognition
+
+NER 的目标是识别文本中的实体 span，并判断实体类型。常见类型包括 PER、ORG、LOC 和 GPE，也可以扩展为产品、作品、时间、金额等领域类型。
+
+BIO tagging 中，B 表示实体开始、I 表示实体内部、O 表示非实体。做法是将每个 token 的 contextual embedding 输入同一个分类头，预测对应 BIO 标签。注意：实际实现需要处理 subword 与原始词边界的对齐，并可用 CRF 或约束解码减少非法标签序列。
+
+## 8. 与知识图谱研究的关系
+
+NER 是知识图谱构建的入口：先识别 entity mention，再通过 entity linking 将 mention 对齐到知识库的规范实体；随后可进行 relation extraction 和 event extraction，构建实体之间的边。
+
+在 KG-RAG 中，encoder 模型可用于 query NER、entity linking、候选证据召回、reranking 和事实一致性判断；decoder LLM 则更适合问题分解、工具调用和自然语言答案生成。二者形成“**编码器负责找准证据，解码器负责组织推理与回答**”的互补分工。
+
+## 重点总结
+
+- MLM 通过双向上下文恢复被遮盖 token，学习上下文相关表示，而非自回归生成能力。
+- contextual embeddings 是 NER、实体链接和关系抽取等理解任务的重要基础。
+- 预训练—微调范式将大规模无标注语料中的知识迁移到具体下游任务。
+- 在 KG-RAG 管线中，encoder 适合检索与判别，decoder LLM 适合推理与生成。
+
+## 导师可能提问
+
+- MLM 与 causal language model 的训练目标、可见上下文和典型用途分别有什么差异？
+- 为什么 contextual embedding 能帮助实体消歧和 entity linking？
+- 在 KG-RAG 中，哪些环节更适合 encoder，哪些环节更适合 decoder LLM？
+
+## 后续补充资料
+
+- Devlin et al. (2019), *BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding*。
+- 比较 BERT、RoBERTa、DeBERTa 的预训练策略与下游迁移表现。
+"""
+
+
+CHAPTER_10_NOTE = r"""# Chapter 10 · Post-training
+
+> 本章关键词：**instruction tuning、preference alignment、reward model、DPO、test-time compute**。
+
+## 1. 本章主题
+
+本章讨论大语言模型完成预训练后的三个关键环节：instruction tuning、preference alignment 和 test-time compute。
+
+预训练模型以预测下一个 token 为目标，因此具备广泛的语言能力，却不必然能正确理解和完成用户指令。Post-training 的作用是调整模型行为：让它更会遵循指令、更符合人类偏好，并能在复杂任务上使用更多推理计算。
+
+## 2. Instruction Tuning
+
+Instruction tuning 也称 supervised fine-tuning（SFT）。训练样本通常由自然语言指令、任务输入和目标回答组成；模型继续最小化语言模型的 cross-entropy loss，学习在给定指令下生成合适回答。
+
+它与单任务微调的差别在于：SFT 往往覆盖多个任务和表达方式，目标是提升模型在新任务上的一般指令遵循能力，而不只是记住某一种标签映射。
+
+## 3. Preference Learning
+
+即使经过 instruction tuning，模型仍可能给出不安全、不忠实或帮助性不足的回答。Preference learning 使用同一 prompt 下多个候选回答之间的偏好关系继续训练模型。
+
+常见的一条偏好数据写作 \((x, o_w, o_l)\)：
+
+- \(x\)：prompt；
+- \(o_w\)：preferred output（获偏好的回答）；
+- \(o_l\)：dispreferred output（未获偏好的回答）。
+
+这类数据直接表达“哪个回答更好”，但“更好”应由明确标准定义，例如帮助性、无害性、证据充分性与事实忠实度。
+
+## 4. Reward Model
+
+Reward model 接收 prompt 和回答，输出一个标量分数。Bradley–Terry model 用两个回答 reward 的差值表示偏好概率：
+
+\[
+P(o_w \succ o_l \mid x) = \sigma\bigl(r(x, o_w) - r(x, o_l)\bigr)
+\]
+
+Reward model 可用于模型对齐，也可用于 best-of-N candidate selection；但 reward 只反映训练数据中的偏好信号，不能直接等同于事实正确性。因此，在知识密集任务中仍需结合外部证据与事实验证。
+
+## 5. Preference Alignment
+
+从强化学习视角看，LLM 是 policy，生成 token 是 action，当前上下文是 state，reward model 为完整回答提供 reward。为防止优化后的模型过度偏离原模型，目标函数通常加入相对于 reference policy 的 KL penalty：
+
+\[
+\max_\pi\; \mathbb{E}[r(x, y)] - \beta\, D_{\mathrm{KL}}\bigl(\pi(\cdot\mid x)\,\|\,\pi_{\mathrm{ref}}(\cdot\mid x)\bigr)
+\]
+
+KL 项相当于行为约束：模型可以为偏好而调整，但不应丢失预训练或 SFT 阶段已有的通用能力。
+
+## 6. DPO
+
+Direct Preference Optimization（DPO）直接利用 preference pairs 训练模型：提高 preferred output 的概率，降低 dispreferred output 的概率，同时以 reference model 约束更新幅度。
+
+DPO 不需要单独训练显式 reward model，训练流程通常比完整的 reward model + PPO 路线更简单。它的优势是工程链路较短；其效果仍取决于偏好数据的覆盖范围、标注准则与参考模型的质量。
+
+## 7. Test-Time Compute
+
+Test-time compute 指在推理阶段增加计算。教材重点介绍 chain-of-thought prompting：通过分步推理 demonstrations 引导模型解决复杂问题。
+
+在 KG-RAG 中，test-time compute 可具体表现为：
+
+- 问题分解；
+- 实体识别与实体链接；
+- 子图或候选证据检索；
+- 候选路径比较；
+- 证据验证与答案生成前的事实一致性检查。
+
+这里增加的不是模型参数，而是为了可靠推理而执行的中间步骤、搜索和验证。
+
+## 8. 对研究方向的意义
+
+Post-training 决定模型如何使用其已有能力。对知识图谱增强推理而言，SFT 可以教模型遵守抽取、检索与引用流程；preference alignment 可以奖励有证据、路径正确和合理拒答的输出；test-time compute 则可以增加多跳检索与验证步骤。
+
+一个可操作的研究问题是：将“答案是否可由检索到的知识图谱路径支撑”转化为偏好数据或奖励信号，并在推理时显式保留检索、比较和验证轨迹。
+
+## 重点总结
+
+- Post-training 将“会续写”的预训练模型转化为更能遵循指令、对齐偏好和完成复杂任务的助手。
+- SFT 学习高质量示范；偏好学习学习回答之间的相对优劣。
+- Reward 不能替代事实正确性，知识密集任务需要外部证据验证。
+- DPO 以更简洁的训练链路直接使用偏好对；test-time compute 则在推理阶段补充搜索与验证。
+
+## 导师可能提问
+
+- Instruction tuning、preference alignment 和 test-time compute 分别改变模型的什么能力？
+- 为什么 reward model 的高分不能保证答案事实正确？
+- 如何把 KG-RAG 的证据路径正确性设计成可训练的偏好或奖励信号？
+
+## 后续补充资料
+
+- Ouyang et al. (2022), *Training language models to follow instructions with human feedback*。
+- Rafailov et al. (2023), *Direct Preference Optimization: Your Language Model is Secretly a Reward Model*。
+- 比较 PPO、DPO 与基于 verifier 的 test-time scaling 在知识密集推理任务中的取舍。
+"""
+
+
+CHAPTER_11_NOTE = r"""# Chapter 11 · Retrieval-based Models
+
+> 本章关键词：**Information Retrieval、BM25、dense retrieval、RAG、retriever、reranker、KG-RAG**。
+
+## 1. 本章主题
+
+本章介绍 Information Retrieval、dense retrieval 和 Retrieval-Augmented Generation（RAG）。其核心目标是让语言模型在生成答案前访问外部知识，而不是完全依赖模型参数中的记忆。
+
+一个基础 RAG 系统由 retriever 和 generator 两部分组成：retriever 根据 query 从文档集合取回相关 passages，generator 将 query 和 passages 作为上下文，生成最终回答。检索质量决定模型是否能看到正确证据，生成质量决定模型是否正确使用证据。
+
+## 2. Sparse Retrieval
+
+Sparse retrieval 将 query 和 document 表示为词表维度上的稀疏向量。常见方法包括 tf-idf 和 BM25。
+
+- TF 衡量一个词在当前文档中的重要性；
+- IDF 衡量该词在整个文档集合中的区分能力；
+- BM25 在此基础上加入词频饱和和文档长度归一化，通常是强而稳定的词法检索基线。
+
+倒排索引建立“词项 → 文档列表”的映射，因此可以快速定位包含查询词的候选文档，而无须逐篇扫描整个集合。
+
+## 3. Dense Retrieval
+
+Dense retrieval 使用语言模型将 query 和 document 编码为低维向量，并通过 dot product 或 cosine similarity 计算相关性。其主要优势是处理 vocabulary mismatch：即使 query 和 document 未使用相同词语，只要语义接近，仍可能被匹配。
+
+Bi-encoder 分别编码 query 与 document，可预先索引文档向量，效率高，适合大规模召回。Cross-encoder 联合编码 query 与 document，判断更精确但计算更昂贵，适合对少量候选进行 reranking。
+
+一个常见的两阶段结构是：
+
+1. bi-encoder 从全库召回 Top-k 候选；
+2. cross-encoder 对候选重排；
+3. 将高质量证据交给 generator。
+
+## 4. Retrieval Evaluation
+
+Precision 衡量返回结果中相关文档的比例，Recall 衡量全部相关文档中被成功取回的比例。二者需要结合任务目标取舍：问答的证据召回不足会直接限制后续生成，而候选过多又会引入噪声和上下文成本。
+
+对于 ranked retrieval，还应考虑相关文档的排名位置。Average Precision（AP）对单个 query 在每个相关结果出现位置的 precision 求平均；MAP 则对多个 query 的 AP 再求平均。实践中还常报告 Recall@k、MRR 或 nDCG，以观察证据是否出现在模型可见的前几名。
+
+## 5. Retrieval-Augmented Generation
+
+基本 RAG 包括三步：
+
+1. retriever 返回 Top-k passages；
+2. 将 passages、query 和 instruction 组成 prompt；
+3. LLM 基于 prompt 生成答案。
+
+RAG 可以接入动态知识、企业私有文档和模型训练完成后出现的新知识，也能在回答中提供引用。它并不自动保证真实性：系统仍需确保 retrieved context 覆盖问题、噪声受控，并要求 generator 基于证据作答或在证据不足时拒答。
+
+## 6. RAG 的主要错误来源
+
+RAG 的错误可能来自多个环节：
+
+- 文档集合中没有正确知识；
+- chunk 划分不合理；
+- retriever 未召回正确证据；
+- 正确证据排名过低；
+- 上下文包含过多噪声；
+- LLM 没有正确使用证据；
+- 答案与引用不一致。
+
+因此，必须分别评价 retrieval 和 generation。端到端答案分数低时，应先定位是语料、切分、召回、重排、上下文构造，还是生成与引用阶段的问题。
+
+## 7. 对 KG-RAG 的意义
+
+KG-RAG 在普通文本 RAG 的基础上加入 entity linking 和 graph retrieval。系统可以检索实体、三元组、邻居和多跳路径，再将这些结构化证据与文本 passages 一起交给 LLM。
+
+GraphRAG 进一步把检索对象扩展为子图和社区摘要，适合关系型问题、多跳问题和全局性问题。一个关键设计原则是按问题选择证据粒度：实体事实可优先检索三元组，关系解释可联合路径与段落，全局概览可使用社区摘要。
+
+## 重点总结
+
+- Sparse retrieval 依赖词项匹配，BM25 是必须保留的强基线；dense retrieval 缓解词汇不匹配。
+- Bi-encoder 擅长高效召回，cross-encoder 擅长精确重排，二者通常组合使用。
+- RAG 的可靠性取决于检索与生成两个独立环节，不能只看最终答案。
+- KG-RAG 与 GraphRAG 通过实体、路径、子图和社区摘要，为多跳与关系型问题提供结构化证据。
+
+## 导师可能提问
+
+- Sparse retrieval 与 dense retrieval 各自解决什么问题，为什么 BM25 仍是重要基线？
+- 为什么 bi-encoder 常用于召回、cross-encoder 常用于 reranking？
+- 如何定位一个 KG-RAG 回答错误究竟来自检索、证据组织还是生成？
+
+## 后续补充资料
+
+- Robertson and Zaragoza (2009), *The Probabilistic Relevance Framework: BM25 and Beyond*。
+- Karpukhin et al. (2020), *Dense Passage Retrieval for Open-Domain Question Answering*。
+- Lewis et al. (2020), *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*。
+"""
+
+
+CHAPTER_17_NOTE = r"""# Chapter 17 · Sequence Labeling for POS and Named Entities
+
+> 本章关键词：**sequence labeling、POS tagging、NER、BIO/BIOES、HMM、Viterbi、CRF**。
+
+## 1. 章节主题
+
+本章介绍 sequence labeling：为输入序列中的每个 token 分配一个标签。Part-of-speech tagging（POS）和 named entity recognition（NER）是两类典型任务。
+
+重点模型包括 HMM 和 CRF。HMM 是生成式概率模型，CRF 是判别式条件概率模型；二者都不只逐 token 独立分类，而是通过全局序列解码寻找最合理的标签序列。
+
+## 2. Part-of-Speech Tagging
+
+POS tagging 为每个词预测词性，例如 NOUN、VERB、ADJ 和 PROPN。本质是上下文消歧：同一个词在不同句子中可能具有不同词性。
+
+POS 信息可以辅助句法分析、关系抽取和事件触发词识别，但在现代知识图谱构建中通常不是最终输出。更重要的是理解它所代表的序列决策与上下文建模思想。
+
+## 3. Named Entity Recognition
+
+NER 的目标是识别实体 span，并判断实体类型。常见类型包括 PERSON、ORG、LOC、GPE、PRODUCT 和 WORK。
+
+NER 面临两个核心歧义：
+
+1. **实体边界歧义**：一个实体从哪个 token 开始、到哪个 token 结束；
+2. **实体类型歧义**：同一个名称在不同上下文中可能表示不同类型。
+
+因此，模型必须利用上下文而不能只依赖词表匹配。
+
+## 4. BIO 与 BIOES
+
+BIO tagging 将 span recognition 转为逐 token 分类：
+
+- `B-X`：X 类实体的开始；
+- `I-X`：X 类实体内部；
+- `O`：实体外部。
+
+BIOES 进一步使用 `E-X` 表示实体结束、`S-X` 表示单 token 实体。若有 \(n\) 类实体，BIO 的标签数为 \(2n + 1\)。标签体系把实体边界显式编码，也带来了合法转移约束，例如 `I-ORG` 不应直接跟在 `O` 后面。
+
+## 5. Hidden Markov Model
+
+HMM 将标签视为隐藏状态，将单词视为观测。模型包含：
+
+- transition probability：\(P(y_i \mid y_{i-1})\)；
+- emission probability：\(P(x_i \mid y_i)\)。
+
+它假设当前标签只依赖前一个标签，当前观测只依赖当前标签。这个假设较强，但 HMM 清晰地展示了如何将局部概率组合为完整序列的联合分数。
+
+## 6. Viterbi Algorithm
+
+Viterbi 是一种动态规划算法。它维护每个时间步到达每个状态的最优路径概率，并使用 backpointer 保存最优前驱状态。序列结束后，从得分最高的终止状态回溯，即可得到概率最高的完整标签序列。
+
+其关键价值是避免枚举所有标签组合：对长度为 \(T\)、标签数为 \(K\) 的线性链，解码可在约 \(O(TK^2)\) 的时间内完成。
+
+## 7. Conditional Random Field
+
+CRF 直接建模 \(P(Y \mid X)\)，可同时利用输入词、邻近词、词缀、word shape、embedding、POS、gazetteer 和标签转移等特征。
+
+Linear-chain CRF 对完整标签序列进行全局归一化，并学习标签间的转移偏好。因此它可以减少非法 BIO 序列；在神经 NER 中，也常把 CRF 接在 contextual encoder 的 token 分类分数之上。
+
+## 8. NER Evaluation
+
+NER 使用实体级 precision、recall 和 F1。只有实体边界和类型都正确时，预测才算 true positive。
+
+常见错误包括：
+
+- 漏识别实体；
+- 多识别实体；
+- 边界错误；
+- 类型错误。
+
+实体级评估比 token accuracy 更严格，因为“边界近似正确”仍可能导致实体链接和关系抽取失败。
+
+## 9. 与知识图谱的关系
+
+NER 是知识图谱构建的基础步骤，但 NER 结果仍只是文本 mention。后续需要 entity linking 将 mention 对齐到规范实体，再进行 relation extraction 和 event extraction。
+
+在 KG-RAG 中，NER 用于发现问题中的实体入口；在 GraphRAG 中，NER 用于从文档中生成图节点。高质量 NER 能提升后续链接、图检索和多跳证据追踪的召回上限。
+
+## 重点总结
+
+- Sequence labeling 关注整个标签序列的合理性，而不仅是单 token 的局部类别。
+- BIO/BIOES 将实体边界编码为标签；CRF 和约束解码可降低非法转移。
+- HMM 与 Viterbi 提供经典的概率建模与动态规划解码框架；CRF 能整合更丰富的判别特征。
+- NER 是 KG 构建与 KG-RAG 实体入口的重要前置步骤，仍需通过 entity linking 完成规范化。
+
+## 导师可能提问
+
+- 为什么 NER 要使用实体级 F1，而不能只看 token accuracy？
+- HMM 与 CRF 分别建模什么概率，二者的特征能力有什么差异？
+- NER、entity linking、relation extraction 在知识图谱构建中如何衔接？
+
+## 后续补充资料
+
+- Lafferty, McCallum, Pereira (2001), *Conditional Random Fields*。
+- Lample et al. (2016), *Neural Architectures for Named Entity Recognition*。
+- 调研 domain-specific NER 中的 subword 对齐、弱监督与标签约束解码。
+"""
+
+
+CHAPTER_20_NOTE = r"""# Chapter 20 · Information Extraction: Relations, Events, and Time
+
+> 本章关键词：**relation extraction、event extraction、temporal analysis、TimeML、template filling、knowledge graph**。
+
+## 1. 章节主题
+
+本章讨论如何从非结构化文本中抽取关系、事件和时间信息，并组织成结构化数据。第 17 章的 NER 主要识别实体 mention；本章进一步识别实体之间的关系、实体参与的事件、事件发生时间和事件之间的时间顺序。
+
+因此，本章是知识图谱与事件知识图谱构建的核心基础：实体成为节点候选，关系成为边，事件成为可连接多个论元的节点，时间关系让图具备演化与推理能力。
+
+## 2. Relation Extraction
+
+Relation Extraction 识别实体之间的语义关系，典型输出为三元组：
+
+`(head entity, relation, tail entity)`
+
+例如：`(刘慈欣, author_of, 三体)`。关系通常有方向，并受到实体类型和 ontology schema 的约束。模型还必须能够输出 `no_relation`，避免为无关实体对强行生成关系。
+
+## 3. Relation Extraction Methods
+
+主要方法包括：
+
+1. Pattern-based extraction；
+2. Supervised relation classification；
+3. Bootstrapping；
+4. Distant supervision；
+5. Open Information Extraction。
+
+Pattern 方法精度高但召回率低；监督方法效果稳定，却需要较多标注数据。Bootstrapping 从少量 seed patterns 或 seed tuples 迭代扩展，需警惕 semantic drift。Distant supervision 用已有知识图谱自动构造训练数据，规模大但有标签噪声。Open IE 不预定义关系集合，直接抽取文本关系短语，后续还需做关系规范化。
+
+## 4. Event Extraction
+
+Event Extraction 识别文本中的事件 mention，并提取事件类型、trigger、arguments 和属性。事件可由动词或名词表达；论元可以包括参与者、地点、时间、金额和产品等信息。
+
+事件比二元关系更适合表达动态场景。例如一次产品发布事件可同时连接发布机构、产品和发布时间，而不必把所有信息拆为彼此脱离的二元边。
+
+## 5. Temporal Representation
+
+时间分析通常包括：
+
+1. temporal expression recognition；
+2. temporal normalization；
+3. event-time linking；
+4. temporal relation classification。
+
+时间表达往往需要结合 document creation time 或 anchor event 归一化，标准时间通常采用 ISO 8601。Allen interval algebra 用 before、after、overlaps、meets、starts、finishes、during 和 equals 等关系描述时间区间之间的关系，为事件顺序推理提供形式化语言。
+
+## 6. Aspect
+
+Aspect 描述事件的内部时间结构，主要类别包括 state、activity、accomplishment 和 achievement。它有助于判断事件是否持续、是否完成、是否存在自然终点，从而支持更细粒度的时间关系推理。
+
+## 7. TimeBank and TimeML
+
+TimeBank 使用 TimeML 标注事件、时间表达及其关系。主要对象包括：
+
+- `EVENT`；
+- `TIMEX3`；
+- `TLINK`；
+- `ALINK`；
+- `SLINK`。
+
+这种表示能够把文本转换为事件时间图，方便查询事件参与者、发生时间及先后依赖。
+
+## 8. Template Filling
+
+Template Filling 识别某类预定义场景，并为模板中的槽位填充值。系统通常先进行 template recognition，再进行 role-filler extraction。
+
+现代 LLM 的 JSON structured extraction 可看作 schema-guided template filling：通过固定字段、类型约束和证据片段，使抽取输出更便于写入下游数据库或知识图谱。
+
+## 9. 与知识图谱的关系
+
+NER 产生实体节点候选，Relation Extraction 产生边，Event Extraction 产生事件节点，Temporal Analysis 为事件添加时间及先后关系。完整流程为：
+
+`Text → NER → Entity Linking → Relation/Event Extraction → Temporal Normalization → Entity/Event Resolution → Knowledge Graph`
+
+在 KG-RAG 中，这条链路可以把文档转化为可检索、可追溯的结构化证据；回答时再将相关实体、关系、事件路径与原文证据共同提供给 LLM。
+
+## 重点总结
+
+- 关系抽取构造实体边，事件抽取组织多论元动态事实，时间分析提供顺序与持续性约束。
+- 监督、弱监督、开放抽取在标注成本、schema 约束与噪声控制上各有取舍。
+- 事件与时间图使知识图谱能表达“谁在何时做了什么”，支持时间敏感的检索与推理。
+- 结构化 JSON 抽取应以 schema、类型约束和证据定位降低幻觉与规范化成本。
+
+## 导师可能提问
+
+- 为什么动态场景通常更适合建模为事件，而不只是多条二元关系？
+- Distant supervision 的标签噪声来自哪里，如何缓解？
+- 如何把时间归一化和事件关系用于时间敏感的 KG-RAG 问答？
+
+## 后续补充资料
+
+- ACE Event Extraction 与 TimeBank/TimeML 标注规范。
+- Mintz et al. (2009), *Distant Supervision for Relation Extraction without Labeled Data*。
+- 调研 LLM schema-guided extraction 的验证、实体消歧和时间归一化策略。
+"""
+
+
+CHAPTER_21_NOTE = r"""# Chapter 21 · Semantic Role Labeling
+
+> 本章关键词：**predicate、argument、semantic role、PropBank、FrameNet、selectional preference、event structure**。
+
+## 1. 章节主题
+
+Semantic Role Labeling（SRL）研究谓词与论元之间的语义关系，回答“谁对谁做了什么、何时、何地、以什么方式发生”等问题。
+
+SRL 提供一种 shallow semantic representation：它比主语、宾语等句法关系更接近事件意义，又没有完整逻辑语义表示那么复杂，因此是把自然语言映射为事件参与结构的重要中间层。
+
+## 2. Semantic Roles
+
+常见语义角色包括：
+
+- AGENT：主动引发事件的参与者；
+- EXPERIENCER：感知或经历某种状态的参与者；
+- FORCE：非自主事件原因；
+- THEME：受到事件影响或移动的对象；
+- INSTRUMENT：事件所使用的工具；
+- SOURCE / GOAL：移动或转移的起点与终点；
+- BENEFICIARY：事件受益者；
+- CONTENT：言说或认知事件的内容。
+
+语义角色不能与句法位置直接对应。主动句、被动句与论元结构交替会让同一角色出现在不同位置，因此 SRL 的目标是跨越表层词序恢复事件参与关系。
+
+## 3. Diathesis Alternations
+
+Diathesis alternation 指同一谓词的论元可以有不同句法实现。例如：
+
+`Doris gave the book to Cary.`
+
+`Doris gave Cary the book.`
+
+两句中 Doris 都是 AGENT，book 都是 THEME，Cary 都是 GOAL。语义角色表示能够越过表层差异，保留稳定的事件结构。
+
+## 4. Problems with Thematic Roles
+
+传统 thematic roles 存在若干困难：没有 universally accepted role set；角色内部可能需要进一步细分；AGENT、THEME 等概念难以用严格条件定义；不同谓词的论元结构差异很大。
+
+因此出现了 Proto-Agent / Proto-Patient、PropBank 和 FrameNet 等不同体系。它们不是完全等价的标签集，而是从不同角度平衡泛化性、词义细节与标注一致性。
+
+## 5. PropBank
+
+PropBank 为每个谓词词义定义 `ARG0`、`ARG1`、`ARG2` 等编号角色。通常 `ARG0` 接近 Proto-Agent，`ARG1` 接近 Proto-Patient，而 `ARG2–ARG4` 的含义取决于具体谓词。
+
+PropBank 还定义修饰角色，如 `ARGM-TMP`（时间）、`ARGM-LOC`（地点）、`ARGM-MNR`（方式）和 `ARGM-CAU`（原因）。编号角色依赖谓词的 frameset，因此使用时需要结合谓词词义解释。
+
+## 6. FrameNet
+
+FrameNet 基于 frame semantics。Frame 是一个包含背景知识、谓词和参与角色的场景结构；角色称为 frame elements，并区分 core roles 与 non-core roles。
+
+不同词可以激活同一 frame。例如 increase、rise 和 fall 都可与尺度变化 frame 相关。相比 PropBank 的逐谓词编号，FrameNet 更强调场景知识和语义概念的共享。
+
+## 7. Semantic Role Labeling
+
+SRL 通常包含五步：
+
+1. predicate identification；
+2. predicate sense disambiguation；
+3. argument identification；
+4. role classification；
+5. global decoding。
+
+传统模型依赖 constituency parse 或 dependency parse；神经模型可将 SRL 转化为带 predicate 条件的 BIO sequence labeling。无论方法如何，全局解码和角色约束都有助于避免相互冲突的论元结构。
+
+## 8. Selectional Preferences
+
+Selectional restriction 表示谓词对论元语义类型的要求，例如 eat 的 THEME 通常属于 FOOD。自然语言中的限制并不绝对，现代系统更常使用 selectional preference，以概率或关联强度表示谓词与论元类别之间的偏好。
+
+这类偏好可用于候选论元排序、异常关系检测与知识图谱 schema 验证，但不应把低频事实简单判定为错误。
+
+## 9. Primitive Decomposition
+
+Primitive decomposition 将复杂谓词分解为基础语义成分，例如：
+
+`KILL(x,y) ⇔ CAUSE(x, BECOME(NOT(ALIVE(y))))`
+
+它有利于因果与状态变化推理，但构建通用语义原语体系较为困难，也难以覆盖语言中的全部细微差异。
+
+## 10. 与知识图谱的关系
+
+SRL 可以将句子转换为事件参与结构：谓词对应事件或关系类型，arguments 对应实体节点，semantic roles 对应事件节点与实体节点之间的边。
+
+典型流程为：
+
+`Text → NER → Entity Linking → Predicate Detection → SRL → Event/Relation Mapping → Knowledge Graph`
+
+在 KG-RAG 中，SRL 可用于从候选证据中抽取“谁—做什么—对谁—何时何地”的结构，再与实体链接、关系抽取和事件时间图结合，提升多跳证据路径的可解释性。
+
+## 重点总结
+
+- SRL 以谓词—论元结构表达事件意义，能跨越主动/被动等表层句法差异。
+- PropBank 侧重谓词编号角色，FrameNet 侧重共享的场景框架；二者适合不同的标注与知识建模需求。
+- Selectional preferences 是概率偏好而非绝对规则，可辅助论元判断与 schema 验证。
+- SRL 为知识图谱提供事件节点、参与者角色和可解释的证据结构。
+
+## 导师可能提问
+
+- SRL 相比 dependency parsing 为事件抽取补充了什么信息？
+- PropBank 与 FrameNet 的角色体系有何差异，分别适合什么场景？
+- 如何将 SRL 输出映射为可用于 KG-RAG 的事件节点和角色边？
+
+## 后续补充资料
+
+- Palmer, Gildea, Kingsbury (2005), *The Proposition Bank*。
+- Gildea, Jurafsky (2002), *Automatic Labeling of Semantic Roles*。
+- 调研 predicate-aware encoder、span-based SRL 与 LLM structured extraction 的结合方式。
+"""
+
+
+CHAPTER_23_NOTE = r"""# Chapter 23 · Coreference Resolution and Entity Linking
+
+> 本章关键词：**mention、coreference cluster、mention ranking、entity linking、candidate generation、knowledge base**。
+
+## 1. 章节主题
+
+本章介绍 coreference resolution 和 entity linking。Coreference resolution 判断文本中的多个 mention 是否指向同一个 discourse entity，并将它们组成 coreference chain；entity linking 则将 mention 或 mention cluster 映射到 ontology 或 knowledge base 中的唯一实体。
+
+两者是知识图谱构建、跨句信息抽取、GraphRAG 和多跳问答的重要基础：前者解决“文中是否同一对象”，后者解决“它在外部知识库中是谁”。
+
+## 2. 基本概念
+
+Mention 是文本中的指称表达，referent 是其实际指向的对象。Anaphor 回指前文实体，antecedent 是其先行词；多个指向同一实体的 mention 组成 coreference cluster。Singleton 指只出现一次、没有其他共指 mention 的实体。
+
+Discourse model 是理解文本时逐步建立的实体、属性和关系表示。共指消解持续更新这一模型，使后续句子能够继承先前提到的对象。
+
+## 3. Mention Detection
+
+Mention detection 识别可能指称实体的 span，候选包括 noun phrases、named entities、pronouns 和 possessive pronouns。系统通常优先保证 recall，再过滤 pleonastic pronouns、非指称名词短语和不符合任务规范的 span。
+
+候选漏掉会给后续共指带来不可恢复的 recall 损失，因此 span 提议与过滤阈值是端到端系统的重要设计点。
+
+## 4. Coreference Architectures
+
+- **Mention-pair model**：对每个 mention pair 二分类，判断是否共指；
+- **Mention-ranking model**：统一为当前 mention 的 antecedent 候选评分，并加入 ε 表示没有 antecedent；
+- **Entity-based model**：直接判断新 mention 是否加入已有 entity cluster，而非只链接某个单独 mention。
+
+Entity-based 模型更贴近最终 cluster，但需要聚合已有 cluster 的信息；mention ranking 则在效率和建模能力之间较为实用。
+
+## 5. Neural Mention Ranking
+
+端到端神经模型通常枚举候选 span，用 Transformer 得到 contextual representation，并计算 mention score、antecedent compatibility score 和最终 coreference score。
+
+Span representation 常包括 start token、end token 和 attention-weighted head representation。模型先裁剪低分 span，再为保留 mention 选择 antecedent，最后通过传递闭包形成 cluster。
+
+## 6. Entity Linking
+
+Entity linking 一般包括四步：
+
+1. mention detection；
+2. candidate generation；
+3. candidate ranking；
+4. entity ID selection。
+
+传统方法可利用 Wikipedia anchor dictionary、entity prior 和 graph coherence。神经方法分别编码 mention context 与 entity title/description，以 dot product 或 cosine similarity 进行候选排序。对 NIL / 无法链接的 mention，需要显式允许拒绝或新实体处理。
+
+## 7. Evaluation
+
+Coreference 的输出是 clusters，需使用专门的 cluster metrics，包括 MUC、B³、CEAF、BLANC 和 LEA。CoNLL evaluation 通常取 MUC、B³ 和 CEAF-e 的平均值。
+
+实体链接除候选召回外，还应评价最终 ID accuracy、top-k candidate recall 和 NIL 判定；只报告最终准确率会掩盖候选生成或排序阶段的失败。
+
+## 8. 与知识图谱的关系
+
+Coreference resolution 将同一实体的不同 mention 合并，减少知识图谱中的重复节点；entity linking 将合并后的 mention cluster 对齐到规范实体 ID。
+
+完整链路为：
+
+`Text → Mention Detection → Coreference Resolution → Entity Linking → Relation/Event Extraction → Knowledge Graph`
+
+在 GraphRAG 中，正确归并与链接能使跨句事实落到一致节点，并让多跳检索沿正确实体边展开；错误链接则可能污染整条证据路径。
+
+## 重点总结
+
+- 共指消解处理文本内部的实体一致性，实体链接处理文本与知识库之间的规范化对齐。
+- Mention ranking 用 ε 建模无 antecedent，neural span model 结合上下文表示和候选裁剪完成端到端聚类。
+- Entity linking 需分解评估候选生成、排序与 NIL 处理，不能只看最终 ID。
+- 两者是跨句抽取、知识图谱去重和 GraphRAG 证据一致性的关键前提。
+
+## 导师可能提问
+
+- 为什么 entity linking 不能只依赖字符串匹配？
+- Mention-pair、mention-ranking 与 entity-based 共指模型各有什么局限？
+- 共指或实体链接错误会怎样影响 GraphRAG 的多跳检索？
+
+## 后续补充资料
+
+- Lee et al. (2017), *End-to-end Neural Coreference Resolution*。
+- Wu et al. (2020), *Scalable Zero-shot Entity Linking with Dense Entity Retrieval*。
+- 调研跨文档共指、NIL entity 与面向领域知识库的实体链接。
+"""
+
+
+NOTE_CONTENT_BY_NUMBER = {
+    9: CHAPTER_9_NOTE,
+    10: CHAPTER_10_NOTE,
+    11: CHAPTER_11_NOTE,
+    17: CHAPTER_17_NOTE,
+    20: CHAPTER_20_NOTE,
+    21: CHAPTER_21_NOTE,
+    23: CHAPTER_23_NOTE,
+}
 
 
 CHAPTERS = [
@@ -49,13 +725,175 @@ CHAPTERS = [
     chapter(5, "Embeddings", "高", "精读", 92, "Embedding 是 dense retrieval、实体表示、语义匹配和向量检索的核心基础。", ["LLM", "RAG", "KG", "Reasoning"], "已完成"),
     chapter(7, "Large Language Models", "高", "精读", 96, "LLM 是后续 KG-RAG、GraphRAG 与证据增强推理的生成和推理核心。", ["LLM", "Reasoning", "RAG", "KG"], "已完成"),
     chapter(8, "Transformers", "高", "精读", 94, "Transformer 提供上下文建模、注意力机制和 LLM 推理能力的结构基础。", ["LLM", "Reasoning", "RAG"], "已完成"),
-    chapter(9, "Masked Language Models", "高", "理解", 82, "MLM 有助于理解预训练表示、实体上下文表征和下游 IE 任务迁移。", ["LLM", "IE", "NER"], "阅读中"),
-    chapter(10, "Post-training", "高", "精读", 91, "Post-training/alignment 影响 LLM 在证据遵循、问答和工具调用中的行为。", ["LLM", "Reasoning", "RAG"], "已完成"),
-    chapter(11, "Retrieval-based Models", "高", "精读", 98, "检索模型直接连接 RAG、KG-RAG 和 GraphRAG，是后续研究的关键章节。", ["RAG", "KG", "GraphRAG", "Reasoning"], "阅读中"),
-    chapter(17, "Sequence Labeling for POS and Named Entities", "高", "精读", 95, "NER 是知识图谱构建、问题实体识别和实体链接的入口任务。", ["NER", "KG", "IE", "Entity Linking"]),
-    chapter(20, "Information Extraction", "高", "精读", 99, "信息抽取覆盖关系、事件和槽填充，是从文本构建知识图谱的核心技术。", ["IE", "KG", "Relation Extraction", "RAG"]),
-    chapter(21, "Semantic Role Labeling", "高", "精读", 88, "SRL 提供谓词-论元结构，可辅助事件抽取、证据路径和可解释推理。", ["IE", "Reasoning", "KG"]),
-    chapter(23, "Coreference Resolution and Entity Linking", "高", "精读", 97, "指代消解与实体链接负责跨句实体归并和知识库对齐，是 GraphRAG 证据一致性的关键。", ["Entity Linking", "KG", "Reasoning", "GraphRAG"]),
+    chapter(
+        9,
+        "Masked Language Models",
+        "高",
+        "理解",
+        88,
+        "MLM 训练出的双向上下文表示，是 query NER、实体链接、候选证据召回、reranking 和事实一致性判断的重要基础；它与负责分解和生成的 decoder LLM 形成互补。",
+        ["LLM", "IE", "NER", "Entity Linking", "KG-RAG"],
+        "已完成",
+        positioning="第 9 章建立从双向预训练表示到 NER、实体链接和 KG-RAG 证据判别模块的连接。",
+        core_concepts=["Masked Language Model", "BERT", "Bidirectional Encoder", "Contextual Embedding", "BIO Tagging"],
+        outline="从双向 Transformer encoder 的可见上下文出发，理解 MLM 的扰动—恢复目标，并连接预训练—微调、分类和 NER 等下游任务。",
+        formulas_algorithms="MLM 仅在被选择的掩码位置计算交叉熵：L_MLM = -Σ_{i∈M} log pθ(x_i | x̃)。BERT 的 15% 扰动中，80% 使用 [MASK]、10% 使用随机 token、10% 保持原 token。",
+        examples="“苹果发布了手机”与“吃了一个苹果”中的“苹果”具有不同 contextual embedding；在 KG-RAG 中可据此辅助实体类型判断与实体链接。",
+        summary="MLM 的价值在于学习适合理解和判别的双向上下文表示。encoder 擅长证据定位与一致性判断，decoder LLM 擅长推理编排与答案生成。",
+        mentor_questions=[
+            "MLM 与 causal language model 在训练目标、可见上下文和适用任务上有什么差异？",
+            "为什么 contextual embedding 能帮助实体消歧和 entity linking？",
+            "在 KG-RAG 管线中，encoder 和 decoder LLM 应如何分工？",
+        ],
+        resources=[
+            "Speech and Language Processing, Third Edition draft, Chapter 9",
+            "Devlin et al. (2019), BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+            "比较 BERT、RoBERTa、DeBERTa 的预训练策略与下游迁移表现",
+        ],
+    ),
+    chapter(
+        10,
+        "Post-training",
+        "高",
+        "精读",
+        95,
+        "Post-training 决定模型如何使用已有能力：SFT 可教会模型遵守 KG-RAG 的抽取与检索流程，偏好对齐可奖励有证据、路径正确和合理拒答的输出，test-time compute 可加入多跳检索与验证。",
+        ["LLM", "Alignment", "Reasoning", "RAG", "KG-RAG"],
+        "已完成",
+        positioning="第 10 章从后训练与推理时计算两个层面，连接模型行为对齐、证据遵循和知识图谱增强推理。",
+        core_concepts=["Instruction Tuning", "Preference Alignment", "Reward Model", "DPO", "Test-Time Compute"],
+        outline="依次理解 SFT 的多任务指令学习、偏好对的相对监督、reward model 与 KL 约束、DPO 的直接优化，以及推理阶段的分步计算。",
+        formulas_algorithms="偏好概率可写为 P(ow ≻ ol|x)=σ(r(x,ow)-r(x,ol))；对齐目标在期望 reward 外加入相对 reference policy 的 KL penalty，以限制策略偏移。",
+        examples="在 KG-RAG 中，SFT 学习抽取—检索—回答流程；偏好数据奖励受证据支撑的答案；推理时通过问题分解、子图检索、路径比较和事实验证增加计算。",
+        summary="后训练塑造模型行为而非凭空赋予知识。可靠的知识增强推理需要高质量偏好标准、外部证据验证和显式的推理时搜索。",
+        mentor_questions=[
+            "Instruction tuning、preference alignment 和 test-time compute 分别改变模型的什么能力？",
+            "为什么 reward model 的高分不能保证答案事实正确？",
+            "如何把 KG-RAG 的证据路径正确性设计成可训练的偏好或奖励信号？",
+        ],
+        resources=[
+            "Speech and Language Processing, Third Edition draft, Chapter 10",
+            "Ouyang et al. (2022), Training language models to follow instructions with human feedback",
+            "Rafailov et al. (2023), Direct Preference Optimization",
+        ],
+    ),
+    chapter(
+        11,
+        "Retrieval-based Models",
+        "高",
+        "精读",
+        98,
+        "检索模型直接连接 RAG、KG-RAG 和 GraphRAG：文本与图结构证据的召回、重排、组织和验证，共同决定知识增强推理的可靠性。",
+        ["RAG", "KG", "GraphRAG", "Reasoning", "Retrieval"],
+        "已完成",
+        positioning="第 11 章建立从词法/语义检索到 RAG、KG-RAG 与 GraphRAG 的证据增强生成主线。",
+        core_concepts=["BM25", "Dense Retrieval", "Bi-encoder", "Cross-encoder", "RAG"],
+        outline="从 sparse retrieval 与倒排索引出发，对比 dense retrieval 的语义匹配能力，再讨论检索评估、RAG 流程、错误诊断与图结构检索。",
+        formulas_algorithms="稀疏检索以 tf-idf/BM25 匹配词项；稠密检索以 query/document 向量的 dot product 或 cosine similarity 打分。两阶段系统先 Top-k 召回，再以 cross-encoder 重排。",
+        examples="对 KG-RAG 问题，先链接 query 实体并召回相关三元组、邻居和文本段落，再比较候选多跳路径，将受支持的结构化与非结构化证据输入 LLM。",
+        summary="RAG 不是单一模型，而是一条可诊断的检索—证据组织—生成链路。需要分别评价召回覆盖、排名质量、上下文噪声、证据遵循和引用一致性。",
+        mentor_questions=[
+            "Sparse retrieval 与 dense retrieval 各自解决什么问题，为什么 BM25 仍是重要基线？",
+            "为什么 bi-encoder 常用于召回、cross-encoder 常用于 reranking？",
+            "如何定位一个 KG-RAG 回答错误究竟来自检索、证据组织还是生成？",
+        ],
+        resources=[
+            "Speech and Language Processing, Third Edition draft, Chapter 11",
+            "Karpukhin et al. (2020), Dense Passage Retrieval for Open-Domain Question Answering",
+            "Lewis et al. (2020), Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks",
+        ],
+    ),
+    chapter(
+        17,
+        "Sequence Labeling for POS and Named Entities",
+        "高",
+        "精读",
+        97,
+        "NER 是知识图谱构建、问题实体识别和实体链接的入口任务；序列级约束有助于产出可链接、可用于图检索的高质量实体边界与类型。",
+        ["NER", "KG", "IE", "Entity Linking", "Sequence Labeling"],
+        "已完成",
+        positioning="第 17 章从序列标注、全局解码和实体级评估出发，连接 NER 与知识图谱构建、实体链接及 KG-RAG。",
+        core_concepts=["POS Tagging", "NER", "BIO/BIOES", "HMM", "CRF", "Viterbi"],
+        outline="先理解 POS 与 NER 的上下文消歧，再学习 BIO/BIOES 边界编码、HMM 的生成式假设、Viterbi 解码、CRF 的条件概率建模与实体级评估。",
+        formulas_algorithms="HMM 使用 transition P(yi|y{i-1}) 与 emission P(xi|yi)；Viterbi 通过动态规划和 backpointer 求最优路径；线性链 CRF 对 P(Y|X) 进行全局序列建模。",
+        examples="对问题“苹果公司的创始人是谁？”，NER 识别“苹果公司”为 ORG，entity linking 将其对齐到规范实体，随后 KG-RAG 才能检索创始人关系与证据路径。",
+        summary="NER 的边界与类型质量决定实体链接和下游图检索的上限。使用序列级约束和实体级 F1，才能真实衡量可用于知识图谱构建的抽取质量。",
+        mentor_questions=[
+            "为什么 NER 要使用实体级 F1，而不能只看 token accuracy？",
+            "HMM 与 CRF 分别建模什么概率，二者的特征能力有什么差异？",
+            "NER、entity linking、relation extraction 在知识图谱构建中如何衔接？",
+        ],
+        resources=[
+            "Speech and Language Processing, Third Edition draft, Chapter 17",
+            "Lafferty, McCallum, Pereira (2001), Conditional Random Fields",
+            "Lample et al. (2016), Neural Architectures for Named Entity Recognition",
+        ],
+    ),
+    chapter(
+        20,
+        "Information Extraction",
+        "高",
+        "精读",
+        99,
+        "信息抽取将文本转化为实体、关系、事件和时间图，是构建可检索、可追溯知识图谱，并为 KG-RAG 提供结构化证据的核心技术。",
+        ["IE", "KG", "Relation Extraction", "Event Extraction", "Temporal Analysis"],
+        "已完成",
+        positioning="第 20 章把实体识别扩展为关系、事件和时间抽取，构成从文本到知识图谱与事件知识图谱的完整信息抽取主线。",
+        core_concepts=["Relation Extraction", "Event Extraction", "Temporal Analysis", "TimeML", "Template Filling"],
+        outline="从关系三元组与抽取范式出发，学习事件的 trigger/argument 表示、时间归一化与区间关系，再连接 TimeML 和 schema-guided template filling。",
+        formulas_algorithms="关系抽取输出 (head, relation, tail) 并需包含 no_relation；时间区间可用 Allen algebra 表示 before、overlaps、during 等关系；模板填充按 schema 提取场景角色。",
+        examples="“某公司于 2025 年发布产品”可抽取发布事件、组织/产品/时间论元，并写入事件节点及时间边；KG-RAG 可据此检索事件路径和原文证据。",
+        summary="关系、事件与时间抽取共同将文本事实组织成可推理图结构。可靠系统需要类型/schema 约束、时间归一化、实体/事件消歧与证据可追溯性。",
+        mentor_questions=[
+            "为什么动态场景通常更适合建模为事件，而不只是多条二元关系？",
+            "Distant supervision 的标签噪声来自哪里，如何缓解？",
+            "如何把时间归一化和事件关系用于时间敏感的 KG-RAG 问答？",
+        ],
+        resources=[
+            "Speech and Language Processing, Third Edition draft, Chapter 20",
+            "Mintz et al. (2009), Distant Supervision for Relation Extraction without Labeled Data",
+            "ACE Event Extraction and TimeBank/TimeML annotation resources",
+        ],
+    ),
+    chapter(
+        21,
+        "Semantic Role Labeling",
+        "高",
+        "精读",
+        92,
+        "SRL 将句子转化为谓词—论元事件结构，可辅助事件抽取、证据路径构建和知识图谱增强推理的可解释性。",
+        ["IE", "Reasoning", "KG", "Event Extraction", "SRL"],
+        "已完成",
+        positioning="第 21 章连接浅层语义表示、事件参与结构与知识图谱中的事件节点和角色边。",
+        core_concepts=["Semantic Role", "PropBank", "FrameNet", "Selectional Preference", "Predicate-Argument Structure"],
+        outline="从语义角色与论元交替出发，对比 PropBank 和 FrameNet，梳理 SRL 的识别—消歧—标注—全局解码流程，并讨论选择偏好与原语分解。",
+        formulas_algorithms="SRL 可建模为带 predicate 条件的 BIO 序列标注，并通过全局解码满足论元结构约束；原语分解示例为 KILL(x,y) ⇔ CAUSE(x, BECOME(NOT(ALIVE(y))))。",
+        examples="“Doris gave Cary the book”中 Doris/AGENT、book/THEME、Cary/GOAL 可映射为发布或转移事件节点连接到各实体的角色边。",
+        summary="SRL 提取的不是简单的词法关系，而是可跨句法形式对齐的事件参与结构；它是将文本证据映射为可解释知识图谱事件的有效中间表示。",
+        mentor_questions=[
+            "SRL 相比 dependency parsing 为事件抽取补充了什么信息？",
+            "PropBank 与 FrameNet 的角色体系有何差异，分别适合什么场景？",
+            "如何将 SRL 输出映射为可用于 KG-RAG 的事件节点和角色边？",
+        ],
+        resources=[
+            "Speech and Language Processing, Third Edition draft, Chapter 21",
+            "Palmer, Gildea, Kingsbury (2005), The Proposition Bank",
+            "Gildea, Jurafsky (2002), Automatic Labeling of Semantic Roles",
+        ],
+    ),
+    chapter(
+        23, "Coreference Resolution and Entity Linking", "高", "精读", 99,
+        "共指消解负责跨句实体归并，实体链接负责知识库 ID 对齐；二者共同保证 GraphRAG 图节点和多跳证据路径的一致性。",
+        ["Entity Linking", "KG", "Reasoning", "GraphRAG", "Coreference"], "已完成",
+        positioning="第 23 章连接文本内部实体一致性、知识库规范化和 GraphRAG 的跨句多跳证据组织。",
+        core_concepts=["Coreference Resolution", "Mention Ranking", "Entity Linking", "Candidate Generation", "Cluster Metrics"],
+        outline="从 mention、referent 和 cluster 概念出发，对比共指架构与神经 mention ranking，梳理实体链接候选生成—排序—ID 选择及 cluster 评估。",
+        formulas_algorithms="共指模型计算 span/antecedent 分数并以 ε 表示无先行词，传递闭包形成 cluster；实体链接以上下文与实体描述向量的 dot product/cosine similarity 排序候选。",
+        examples="“苹果发布了产品。该公司随后……”中“苹果”和“该公司”先聚为 cluster，再链接到规范公司实体，GraphRAG 才能沿发布事件与产品节点检索。",
+        summary="共指消解降低图中重复节点，实体链接提供可跨文档复用的规范 ID。必须分别保障 mention recall、候选召回、排序质量与 NIL 处理。",
+        mentor_questions=["为什么 entity linking 不能只依赖字符串匹配？", "Mention-pair、mention-ranking 与 entity-based 共指模型各有什么局限？", "共指或实体链接错误会怎样影响 GraphRAG 的多跳检索？"],
+        resources=["Speech and Language Processing, Third Edition draft, Chapter 23", "Lee et al. (2017), End-to-end Neural Coreference Resolution", "Wu et al. (2020), Scalable Zero-shot Entity Linking with Dense Entity Retrieval"],
+    ),
     chapter(3, "N-gram Language Models", "中", "理解", 58, "用于理解语言模型历史和概率建模思想，对现代 LLM 是背景知识。", ["LLM"], "已完成"),
     chapter(4, "Logistic Regression", "中", "理解", 62, "分类基础有助于理解传统 NER/IE 特征模型和评价方式。", ["NER", "IE"]),
     chapter(6, "Neural Networks", "中", "理解", 72, "神经网络基础支撑 embedding、sequence labeling 和 Transformer。", ["LLM", "NER"], "已完成"),
@@ -132,7 +970,7 @@ def seed() -> None:
                     source_id=source.id,
                     chapter_id=chapter_obj.id,
                     title=f"{chapter_obj.number} {chapter_obj.title} 阅读笔记",
-                    content=NOTE_TEMPLATE.format(
+                    content=NOTE_CONTENT_BY_NUMBER.get(chapter_obj.number) or NOTE_TEMPLATE.format(
                         number=chapter_obj.number,
                         title=chapter_obj.title,
                         positioning=chapter_obj.positioning,

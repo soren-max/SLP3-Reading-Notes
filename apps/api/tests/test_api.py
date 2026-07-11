@@ -43,6 +43,34 @@ def test_seeded_api_contract(tmp_path, monkeypatch):
     notes = client.get("/api/notes")
     assert notes.status_code == 200
     assert len(notes.json()) == len(seed_module.CHAPTERS)
+    chapter_9 = next(chapter for chapter in chapter_data if chapter["number"] == 9)
+    chapter_9_note = next(note for note in notes.json() if note["chapter_id"] == chapter_9["id"])
+    assert "Masked Language Modeling" in chapter_9_note["content"]
+    assert "KG-RAG" in chapter_9_note["content"]
+    chapter_10 = next(chapter for chapter in chapter_data if chapter["number"] == 10)
+    chapter_10_note = next(note for note in notes.json() if note["chapter_id"] == chapter_10["id"])
+    assert "Direct Preference Optimization" in chapter_10_note["content"]
+    assert "Test-Time Compute" in chapter_10_note["content"]
+    chapter_11 = next(chapter for chapter in chapter_data if chapter["number"] == 11)
+    chapter_11_note = next(note for note in notes.json() if note["chapter_id"] == chapter_11["id"])
+    assert "Dense Retrieval" in chapter_11_note["content"]
+    assert "KG-RAG" in chapter_11_note["content"]
+    chapter_17 = next(chapter for chapter in chapter_data if chapter["number"] == 17)
+    chapter_17_note = next(note for note in notes.json() if note["chapter_id"] == chapter_17["id"])
+    assert "Conditional Random Field" in chapter_17_note["content"]
+    assert "entity linking" in chapter_17_note["content"]
+    chapter_20 = next(chapter for chapter in chapter_data if chapter["number"] == 20)
+    chapter_20_note = next(note for note in notes.json() if note["chapter_id"] == chapter_20["id"])
+    assert "Event Extraction" in chapter_20_note["content"]
+    assert "Temporal Analysis" in chapter_20_note["content"]
+    chapter_21 = next(chapter for chapter in chapter_data if chapter["number"] == 21)
+    chapter_21_note = next(note for note in notes.json() if note["chapter_id"] == chapter_21["id"])
+    assert "Semantic Role Labeling" in chapter_21_note["content"]
+    assert "PropBank" in chapter_21_note["content"]
+    chapter_23 = next(chapter for chapter in chapter_data if chapter["number"] == 23)
+    chapter_23_note = next(note for note in notes.json() if note["chapter_id"] == chapter_23["id"])
+    assert "Coreference Resolution" in chapter_23_note["content"]
+    assert "Entity Linking" in chapter_23_note["content"]
 
     roadmap = client.get("/api/roadmap").json()
     roadmap_steps = " ".join(step for phase in roadmap["slp3"] for step in phase["steps"])
