@@ -43,6 +43,10 @@ def test_seeded_api_contract(tmp_path, monkeypatch):
     notes = client.get("/api/notes")
     assert notes.status_code == 200
     assert len(notes.json()) == len(seed_module.CHAPTERS)
+    chapter_9 = next(chapter for chapter in chapter_data if chapter["number"] == 9)
+    chapter_9_note = next(note for note in notes.json() if note["chapter_id"] == chapter_9["id"])
+    assert "Masked Language Modeling" in chapter_9_note["content"]
+    assert "KG-RAG" in chapter_9_note["content"]
 
     roadmap = client.get("/api/roadmap").json()
     roadmap_steps = " ".join(step for phase in roadmap["slp3"] for step in phase["steps"])
