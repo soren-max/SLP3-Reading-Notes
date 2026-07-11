@@ -720,6 +720,78 @@ NOTE_CONTENT_BY_NUMBER = {
 }
 
 
+PRIORITY_CHAPTERS_SUMMARY = r"""# SLP3 第一优先级章节总结：知识图谱增强的大模型推理基础
+
+## 整体定位
+
+第一优先级章节共同回答一个系统问题：**如何把自然语言文本转化为可检索、可链接、可推理、可验证的知识，并让 LLM 基于这些知识生成答案？**
+
+```text
+原始文本 → Tokenization → Embedding / Contextual Representation
+→ NER 与 Mention Detection → Coreference Resolution → Entity Linking
+→ Relation / Event / Semantic Role Extraction → Knowledge Graph Construction
+→ Sparse / Dense / Graph Retrieval → RAG / KG-RAG / GraphRAG
+→ LLM Reasoning and Generation → Evidence Verification and Evaluation
+```
+
+## 五个能力模块
+
+1. **语言表示**：Tokenization、Embedding、Transformer、MLM 决定文本如何被表示，并影响实体边界、语义匹配与上下文消歧。
+2. **LLM 生成与对齐**：next-token prediction 提供生成能力；SFT、preference alignment 和 test-time compute 让模型遵循流程、使用证据并在复杂问题上增加搜索与验证。
+3. **检索**：BM25 处理精确词项，dense retrieval 处理语义匹配，cross-encoder 负责重排；三者可与图检索组成 hybrid retrieval。
+4. **信息抽取**：NER、关系抽取、事件抽取和 SRL 将文本转换为实体、关系、事件和参与角色。
+5. **实体落地与图推理**：共指消解合并文本内 mention，实体链接映射知识库 ID，知识图谱保存可查询、可解释的多跳路径。
+
+## 关键分工与区别
+
+| 概念 | 主要作用 |
+| --- | --- |
+| Static / contextual embedding | 固定词向量 / 依上下文变化的表示 |
+| Encoder / decoder | 表示、抽取、匹配、重排 / 规划、推理、生成、工具调用 |
+| Attention / retrieval | 模型内部 token 交互 / 模型外部知识检索 |
+| NER / entity linking | 识别“苹果”是 ORG / 对齐到 Apple Inc. 的唯一 ID |
+| Coreference / entity linking | 合并“苹果公司”“该公司” / 映射到外部 KG 实体 |
+| Relation extraction / SRL | 规范实体关系 / 谓词事件中的论元角色 |
+| RAG / KG-RAG / GraphRAG | 文本证据 / 实体、三元组和路径 / 子图、社区与局部/全局图检索 |
+
+## 从文本到 KG-RAG
+
+离线建库：
+
+```text
+文档采集 → 清洗与切分 → NER / 共指 / 实体链接
+→ 关系、事件、时间抽取 → 实体/事件消歧 → KG 构建
+→ 文档与实体 embedding → 稀疏、稠密与图索引
+```
+
+在线问答：
+
+```text
+问题 → Query NER 与实体链接 → 问题分解
+→ Sparse / Dense / Subgraph Retrieval → Reranking → Evidence Fusion
+→ LLM 生成 → 引用、路径输出与答案验证
+```
+
+以“《三体》的作者出生在哪里？”为例：先将“三体”链接到作品实体，沿 `author` 边找到刘慈欣，再沿 `birthplace` 边和文本证据确认阳泉；最终输出答案、实体、路径、证据与置信度。
+
+## 必须掌握的公式
+
+- Cosine similarity：\(\cos(u,v)=\frac{u\cdot v}{\|u\|\|v\|}\)，用于 query、文档与实体向量匹配。
+- 自回归生成：\(P(w_i \mid w_{<i})\)；RAG 条件生成：\(P(a_i \mid q,R(q),a_{<i})\)。
+- 序列标注：\(\hat{Y}=\arg\max_Y P(Y\mid X)\)。
+- 实体链接：\(\hat e=\arg\max_{e\in C(m)} P(e\mid m,context,KG)\)。
+- 检索评价：\(Precision=TP/(TP+FP)\)、\(Recall=TP/(TP+FN)\)、\(F_1=2PR/(P+R)\)。
+
+## 研究结论与评估
+
+Embedding 负责召回“可能相关”的内容，知识图谱提供实体、关系、类型约束和路径证据；二者互补而非替代。LLM 擅长理解、规划与生成，但动态事实应来自文档库、数据库、KG 或 API。
+
+可靠的多跳推理需要显式中间状态：起始实体 ID、关系类型、中间实体、三元组来源、路径得分、文本证据和验证状态。解释也应来自这些证据，而不是模型自述。
+
+建议对比 Closed-book LLM、Vector RAG、Hybrid RAG、KG-RAG 和 GraphRAG，并分别报告 Retrieval Recall@K、Entity Linking Accuracy、Relation F1、Path Accuracy、Answer EM/F1、Faithfulness、Citation Correctness、Latency 和 Token Cost。错误分析应细分 Tokenization、NER、Coreference、Entity Linking、Relation Extraction、Retrieval、Path Search、Evidence Utilization、Generation 与 Citation。
+"""
+
+
 CHAPTERS = [
     chapter(2, "Words and Tokens", "高", "精读", 90, "Tokenization 决定实体边界、检索粒度和 LLM 输入表示，是 NER 与实体链接的前置基础。", ["LLM", "NER", "Entity Linking", "KG"], "已完成"),
     chapter(5, "Embeddings", "高", "精读", 92, "Embedding 是 dense retrieval、实体表示、语义匹配和向量检索的核心基础。", ["LLM", "RAG", "KG", "Reasoning"], "已完成"),
@@ -980,6 +1052,15 @@ def seed() -> None:
                     tags=",".join(chapter_obj.tags),
                 )
             )
+        db.add(
+            Note(
+                source_id=source.id,
+                chapter_id=None,
+                title="SLP3 第一优先级章节总结：知识图谱增强的大模型推理基础",
+                content=PRIORITY_CHAPTERS_SUMMARY,
+                tags="SLP3,KG-RAG,GraphRAG,RAG,Knowledge Graph,Summary",
+            )
+        )
         db.commit()
     finally:
         db.close()

@@ -42,7 +42,14 @@ def test_seeded_api_contract(tmp_path, monkeypatch):
 
     notes = client.get("/api/notes")
     assert notes.status_code == 200
-    assert len(notes.json()) == len(seed_module.CHAPTERS)
+    assert len(notes.json()) == len(seed_module.CHAPTERS) + 1
+    priority_summary = next(
+        note
+        for note in notes.json()
+        if note["title"] == "SLP3 第一优先级章节总结：知识图谱增强的大模型推理基础"
+    )
+    assert priority_summary["chapter_id"] is None
+    assert "KG-RAG" in priority_summary["content"]
     chapter_9 = next(chapter for chapter in chapter_data if chapter["number"] == 9)
     chapter_9_note = next(note for note in notes.json() if note["chapter_id"] == chapter_9["id"])
     assert "Masked Language Modeling" in chapter_9_note["content"]
