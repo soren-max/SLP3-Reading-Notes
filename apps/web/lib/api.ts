@@ -62,6 +62,16 @@ export type RoadmapResponse = {
   custom: CustomRoadmap[];
 };
 
+export type InternRecord = {
+  id: number;
+  day: number;
+  title: string;
+  content: string;
+  tags: string;
+  record_date: string;
+  created_at: string;
+};
+
 export type Report = {
   progress_percent: number;
   current_stage: string;
@@ -105,5 +115,7 @@ export const api = {
     request<Note>(`/api/notes/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   deleteNote: (id: number) => request<void>(`/api/notes/${id}`, { method: "DELETE" }),
   roadmap: () => request<RoadmapResponse>("/api/roadmap"),
+  internRecords: () => request<InternRecord[]>("/api/interns"),
+  internRecord: (id: number) => request<InternRecord>(`/api/interns/${id}`),
   report: (sourceId?: number) => request<Report>(`/api/report${sourceId ? `?source_id=${sourceId}` : ""}`),
 };

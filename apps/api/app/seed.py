@@ -1,5 +1,6 @@
 from app.database import Base, SessionLocal, engine, init_db
 from app.models.chapter import Chapter
+from app.models.intern import InternRecord
 from app.models.note import Note
 from app.models.source import Source
 
@@ -792,6 +793,182 @@ Embedding 负责召回“可能相关”的内容，知识图谱提供实体、�
 """
 
 
+INTERN_RECORDS = [
+    {
+        "day": 1,
+        "title": "环境熟悉与业务理解",
+        "tags": "环境搭建,业务理解,全栈开发",
+        "content": r"""## 今日工作内容
+
+### 1. 熟悉实习环境
+
+* 了解公司内部开发环境，包括前端（React）与后端（Node.js / Python）项目的构建、发布流程。
+* 熟悉 Windows 操作机、开发工具安装方式以及离线环境下的软件部署流程。
+* 初步了解企业内部对于安全、网络隔离、依赖版本管理的要求。
+
+### 2. 明确项目方向
+
+当前负责方向为内部运维管理平台的全栈开发。
+
+初步思考：
+
+* MVP 阶段聚焦搭建平台基础骨架，不直接深入复杂业务逻辑。
+* 优先建立从界面到数据层的完整链路：
+
+  * 服务器资产信息展示（CPU、内存、磁盘可视化）
+  * 服务状态监控看板
+  * 日志查询与异常分析页面
+  * 基础运维知识问答面板
+
+后续再逐步接入真实业务系统并完善权限、告警等功能。
+
+### 3. 与 Mentor 沟通方向
+
+沟通重点：
+
+* 实习期间主要学习企业级全栈开发流程，包括前后端协作、接口设计、数据库建模与部署规范。
+* 不仅关注代码实现，还需要理解：
+
+  * 业务运维场景与痛点
+  * 系统架构（前后端分离、微服务基础）
+  * 研发规范（代码评审、分支策略、文档维护）
+  * 工具设计思路（如何让内部平台更好用）
+
+## 遇到的问题与解决记录
+
+**问题：Win11 重装后的磁盘分区问题**
+
+现象：安装 Windows 后只有 C 盘。
+分析：安装过程中没有手动创建分区。
+解决：使用磁盘管理重新划分空间。
+
+**问题：操作机缺少 Wi-Fi 驱动**
+
+解决：提前准备对应型号驱动包，企业环境安装系统后需同步补齐驱动。""",
+    },
+    {
+        "day": 2,
+        "title": "开发工具与 AI 辅助开发环境搭建",
+        "tags": "VS Code,AI开发,环境配置,离线环境",
+        "content": r"""## 今日工作内容
+
+### 1. VS Code 离线环境配置
+
+遇到问题：公司环境无法直接访问插件市场，前端开发常用插件（ESLint、Prettier、Vetur 等）无法在线安装。Mentor 提供离线插件包，需要手动安装。
+
+学习内容：
+
+* VSIX 插件安装流程。
+* VS Code 扩展目录结构：extension、extension.vsixmanifest、extension.xml。
+
+解决方案：使用离线 VSIX 包安装前端与后端开发必备插件。配置企业内网下的代码补全、格式化与调试环境。
+
+### 2. AI Coding 工具调研
+
+调研工具：Cline、Continue、Cherry Studio、Codex
+
+重点关注：
+
+* 如何连接企业内部大模型。
+* 如何使用本地千问模型辅助全栈开发（生成组件代码、接口逻辑、测试用例）。
+
+探索方案：VS Code + Continue + 内网大模型 API
+
+配置思路：
+
+* 本地模型地址
+* API Key
+* 模型名称
+* MCP 工具调用能力（用于连接数据库、执行 shell 等）
+
+目标：构建类似 Copilot 的企业内部 AI 开发助手，提升前后端代码编写效率。
+
+### 3. 企业级 AI 开发规范思考
+
+针对全栈项目中使用 AI 生成代码，需要提前建立规范，包括 AI_RULES.md：
+
+约束内容：
+
+* 项目架构规范（组件划分、状态管理、API 层设计）
+* 代码风格（ESLint/Prettier 统一、命名规范）
+* Git 工作流（feature 分支、commit message 格式）
+* 提交规范（conventional commits）
+* 测试要求（单元测试、接口测试）
+* 文档维护要求（接口文档、组件说明）
+
+目标：让 AI Coding 工具生成代码时遵循企业工程规范，生成可维护、可集成的业务代码。""",
+    },
+    {
+        "day": 3,
+        "title": "全栈项目 MVP 规划与问题整理",
+        "tags": "MVP设计,系统架构,AI Agent,运维平台",
+        "content": r"""## 今日工作内容
+
+### 1. 运维管理平台 MVP 设计思考
+
+当前规划：搭建前后端分离的运维管理平台 MVP。
+
+**功能方向一：服务器资产管理模块**
+
+* 前端（React + Ant Design）：主机列表、详情卡片、CPU/内存/磁盘使用率图表（基于 ECharts）。
+* 后端（Node.js + Express 或 Python FastAPI）：提供 RESTful API，采集并返回主机信息。
+* 数据库（MySQL）：存储资产信息与历史状态快照。
+
+**功能方向二：日志辅助分析模块**
+
+* 前端：日志查询页面，支持关键词搜索、异常关键词高亮、时间范围筛选。
+* 后端：日志读取接口，支持分页与简单过滤逻辑。
+* 未来可结合本地大模型实现智能分析。
+
+**功能方向三：运维知识助手**
+
+* 前端：聊天面板，用户输入异常描述或错误日志片段。
+* 后端：调用内网千问大模型，返回问题分析、排查步骤、解决建议。
+* 支持上下文记忆，可逐步引入 RAG 机制检索内部运维文档。
+
+### 2. AI Agent 技术结合方向
+
+结合之前 R&D Agent Copilot 项目经验，考虑在全栈平台中引入 Agent 架构：
+
+**Router**：负责判断用户请求类型（日志分析、服务检查、配置对比、故障咨询）。
+
+**Planner**：负责拆解任务。例如用户说 "nginx 服务异常"，Agent 会：
+1. 调用后端接口查询服务状态
+2. 拉取对应时间段日志
+3. 通过大模型分析错误原因
+4. 向前端返回处理建议并展示
+
+**Tools**：连接真实运维能力，通过后端封装工具调用（执行受限 shell 命令、日志文件查询、配置一致性检查、数据库连接检测）。前端仅通过接口触发，确保安全可控。
+
+## 遇到的问题与解决记录
+
+**问题：企业环境下 AI 工具接入**
+如何在无法访问公网的环境使用 AI 辅助全栈开发。
+
+探索方案：
+* 本地：Cherry Studio 作为模型管理入口，Continue/Cline 作为 IDE Agent
+* 模型：内网部署千问大模型
+* 目标：VS Code → Agent 插件 → 内网 LLM → 工具调用
+
+## 阶段总结（前三天）
+
+✅ 熟悉企业全栈开发环境（前端、后端、数据库工具链）
+✅ 了解离线开发工具与插件部署流程
+✅ 调研企业内部 AI Coding 使用方式，搭建 AI 辅助开发环境
+✅ 明确内部运维管理平台 MVP 功能方向与前后端职责
+✅ 思考 Agent 与全栈应用结合方案，设计 Router/Planner/Tools 架构
+
+## 下一阶段计划
+
+1. 完善平台需求分析，输出前端页面原型与接口设计文档
+2. 设计 MVP 系统架构（前端 SPA、后端 API、数据库表结构）
+3. 建立 Git 项目仓库，制定协作规范与 AI_RULES
+4. 使用 AI Agent 辅助完成基础代码开发
+5. 后续逐步接入真实运维数据，完善监控、告警与知识问答功能""",
+    },
+]
+
+
 CHAPTERS = [
     chapter(2, "Words and Tokens", "高", "精读", 90, "Tokenization 决定实体边界、检索粒度和 LLM 输入表示，是 NER 与实体链接的前置基础。", ["LLM", "NER", "Entity Linking", "KG"], "已完成"),
     chapter(5, "Embeddings", "高", "精读", 92, "Embedding 是 dense retrieval、实体表示、语义匹配和向量检索的核心基础。", ["LLM", "RAG", "KG", "Reasoning"], "已完成"),
@@ -1061,6 +1238,8 @@ def seed() -> None:
                 tags="SLP3,KG-RAG,GraphRAG,RAG,Knowledge Graph,Summary",
             )
         )
+        for record_data in INTERN_RECORDS:
+            db.add(InternRecord(**record_data))
         db.commit()
     finally:
         db.close()

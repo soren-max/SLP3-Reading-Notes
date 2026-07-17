@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, FileText, GitBranch, Home, Library, NotebookPen, Sparkles } from "lucide-react";
+import { BookOpen, FileText, GitBranch, Home, Library, NotebookPen, Sparkles, Briefcase } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -12,6 +12,7 @@ const nav = [
   { href: "/chapters", label: "SLP3", icon: BookOpen },
   { href: "/roadmap", label: "Roadmap", icon: GitBranch },
   { href: "/notes", label: "Notes", icon: NotebookPen },
+  { href: "/interns", label: "实习记录", icon: Briefcase },
   { href: "/report", label: "Report", icon: FileText },
 ];
 
