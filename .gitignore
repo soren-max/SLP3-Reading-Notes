@@ -1,6 +1,10 @@
 .DS_Store
 .env
 .venv
+venv/
+.reasonix/
+*.tsbuildinfo
+.env.local
 __pycache__/
 *.pyc
 *.db
