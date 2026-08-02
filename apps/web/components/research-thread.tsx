@@ -4,7 +4,7 @@ const steps = ["LLM Foundation", "RAG", "Information Extraction", "Entity Linkin
 
 export function ResearchThread() {
   return (
-    <div className="rounded-lg border bg-card/80 p-4 backdrop-blur-xl">
+    <div className="rounded-lg border bg-secondary/40 p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         {steps.map((step, index) => (
           <div key={step} className="flex flex-1 items-center gap-3">

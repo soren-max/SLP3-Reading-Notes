@@ -54,7 +54,7 @@ export default async function SourceDetailPage({ params }: Props) {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border bg-card/80 p-6 shadow-sm backdrop-blur-xl">
+      <section className="rounded-lg border bg-card p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2">

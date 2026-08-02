@@ -176,7 +176,7 @@ export function ChapterWorkstation({ chapter, notes }: Props) {
       )}
 
       {/* ===== Sticky Header ===== */}
-      <div className="sticky top-0 z-10 -mx-4 -mt-6 border-b bg-background/80 px-4 pb-3 pt-4 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+      <div className="sticky top-0 z-10 -mx-4 -mt-6 border-b bg-background/95 px-4 pb-3 pt-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 space-y-2">
             <p className="text-sm text-muted-foreground">Chapter {chapter.number}</p>
@@ -184,7 +184,7 @@ export function ChapterWorkstation({ chapter, notes }: Props) {
               {chapter.title}
             </h1>
             <div className="flex flex-wrap items-center gap-2">
-              <Badge className="border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-400/30 dark:bg-indigo-400/10 dark:text-indigo-200">
+              <Badge className="border-primary/25 bg-primary/10 text-primary">
                 {chapter.priority}
               </Badge>
               <Badge
@@ -202,7 +202,7 @@ export function ChapterWorkstation({ chapter, notes }: Props) {
               <Badge>{chapter.mastery}</Badge>
               <Badge>{chapter.relevance_score}% 相关度</Badge>
               {draft && (
-                <Badge className="border-cyan-200 bg-cyan-50 text-cyan-700">
+                <Badge className="border-border bg-secondary text-secondary-foreground">
                   已有笔记 · {wordCount} 词
                 </Badge>
               )}

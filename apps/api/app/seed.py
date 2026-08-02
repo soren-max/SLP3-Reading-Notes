@@ -1,3 +1,5 @@
+from datetime import date
+
 from app.database import Base, SessionLocal, engine, init_db
 from app.models.chapter import Chapter
 from app.models.intern import InternRecord
@@ -46,6 +48,568 @@ def chapter(
     }
     data.update(details)
     return data
+
+
+CHAPTER_3_NOTE = r"""# Chapter 3: N-gram Language Models
+
+> 第二优先级章节：理解即可，不做深度推导。
+
+## 章节定位
+
+本章使用最简单的统计语言模型 n-gram，引出语言建模中的核心问题：如何根据上下文预测下一个 token、如何为句子分配概率、如何评价模型，以及如何处理训练语料中未出现的序列。现代 LLM 虽然使用 Transformer 代替计数表，但仍然延续了 next-token prediction 的基本任务。
+
+## 核心概念
+
+- **Language Model**：输入上下文，输出下一个 token 的概率分布。
+- **N-gram**：由连续 n 个 token 构成的序列。n-gram 模型只使用前面 n-1 个 token 预测当前 token。
+- **Markov Assumption**：用最近的少量 token 近似完整历史，使概率能够通过有限语料进行估计。
+- **MLE**：通过语料中的相对频率估计概率。以 bigram 为例：
+
+  \[
+  P(w_t \mid w_{t-1}) = \frac{C(w_{t-1}, w_t)}{C(w_{t-1})}
+  \]
+
+- **Perplexity**：评价模型在测试集上的预测能力，通常越低表示模型对真实 token 的预测越准确。
+- **Smoothing**：为训练集中未见过的序列分配非零概率，避免一句话中某一步概率为零后整个句子概率变为零。
+
+## 方法直觉
+
+句子概率可以通过概率链式法则拆成每个 token 的条件概率：
+
+\[
+P(w_{1:T}) = \prod_{t=1}^{T} P(w_t \mid w_{1:t-1})
+\]
+
+但完整历史很难统计，因此 n-gram 只保留最近的固定窗口：
+
+\[
+P(w_t \mid w_{1:t-1}) \approx P(w_t \mid w_{t-m+1:t-1})
+\]
+
+窗口越大，局部信息越丰富，但数据稀疏和存储问题也越严重。
+
+## 关键公式
+
+困惑度：
+
+\[
+PP(W) = P(w_{1:T})^{-1/T}
+\]
+
+模型给测试文本的概率越高，perplexity 越低。不同模型只有在相同测试集、词表和分词条件下才适合直接比较。
+
+Laplace smoothing：
+
+\[
+P(w_t \mid w_{t-1}) = \frac{C(w_{t-1}, w_t) + 1}{C(w_{t-1}) + V}
+\]
+
+其目的是消除零概率，但 add-one 往往会向未见事件分配过多概率，因此主要作为理解平滑思想的基础。
+
+## 简单例子
+
+训练集中包含：
+
+```text
+查询 华为 创始人
+查询 华为 总部
+```
+
+trigram 模型在看到“查询 华为”时，可以根据计数预测“创始人”或“总部”。若“查询 华为 CEO”没有出现，MLE 会给它概率 0，平滑后则会获得较小的非零概率。
+
+## 优点与局限
+
+优点是简单、可解释、训练快，适合学习概率语言模型的基础。局限是只能使用短上下文、数据稀疏严重、无法学习语义相似性，也无法进行长距离依赖建模和多跳推理。
+
+Interpolation 可以组合 unigram、bigram 和 trigram：高阶模型提供具体上下文，低阶模型则在数据稀疏时提供更稳定的估计。
+
+## 与 KG-LLM 方向的联系
+
+n-gram 与现代 LLM 都预测下一个 token，但 LLM 使用 Transformer 学习长上下文和连续语义表示。n-gram 只能学习“华为—创始人”等表面共现，不能建立“华为—创始人—任正非”这样的结构化三元组，也不能完成知识检索、证据验证或多跳推理。
+
+对 KG-RAG 而言，本章最重要的价值是理解生成模型的概率基础。KG-RAG 则在语言生成之外进一步加入图谱检索、实体链接、关系约束和推理路径。
+
+## 导师可能提问
+
+**Q1：为什么 n-gram 只使用有限上下文？**
+
+为了缓解完整历史组合过多造成的数据稀疏问题。
+
+**Q2：为什么需要 smoothing？**
+
+因为未见 n-gram 的 MLE 概率为 0，会导致整个句子概率为 0。
+
+**Q3：n-gram 与 LLM 的核心区别是什么？**
+
+n-gram 依靠固定窗口计数，LLM 依靠神经网络学习长上下文和语义表示。
+
+## 一句话总结
+
+n-gram 是基于局部共现计数的经典语言模型，其主要价值是帮助理解 next-token prediction、perplexity、smoothing 以及现代 LLM 的概率建模基础。
+"""
+
+
+CHAPTER_4_NOTE = r"""# Chapter 4: Logistic Regression
+
+## 章节定位
+
+逻辑回归是经典的监督分类模型，也是理解神经网络分类器和 LLM 输出层的重要基础。本章建立了核心机器学习链路：
+
+```text
+输入特征 -> 线性打分 -> 概率 -> 损失 -> 参数更新
+```
+
+教材将概率分类器概括为输入表示、分类函数、目标函数和优化算法四个组成部分。
+
+## 核心概念
+
+- **Feature Representation**：把文本转换成数值向量。传统 NLP 使用词频、关键词、否定词和实体类型等人工特征。
+- **Logit**：模型对某个类别给出的未归一化分数：
+
+  \[
+  z = w \cdot x + b
+  \]
+
+- **Sigmoid**：把一个实数映射到 0 到 1，用于二分类：
+
+  \[
+  P(y=1 \mid x) = \frac{1}{1+\exp(-(w \cdot x+b))}
+  \]
+
+- **Softmax**：把多个类别分数转换为总和为 1 的概率分布：
+
+  \[
+  P(y=k \mid x) = \frac{\exp(z_k)}{\sum_j \exp(z_j)}
+  \]
+
+- **Cross-Entropy**：衡量模型预测概率与真实标签的差异。
+
+## 方法直觉
+
+模型首先根据输入特征为各类别计算分数。一个特征的权重为正，表示它支持某个类别；权重为负，表示反对该类别。
+
+二分类使用一个权重向量和 sigmoid。多分类为每个类别设置一组权重，组成矩阵 \(W\)，再通过 softmax 输出类别概率。
+
+训练时，模型比较预测概率 \(\hat{y}\) 与真实标签 \(y\)。如果正确类别的概率太低，cross-entropy 就会增大；梯度下降再调整参数，使下一次正确类别的概率提高。
+
+## 关键公式
+
+二分类交叉熵：
+
+\[
+L = -[y\log \hat{y} + (1-y)\log(1-\hat{y})]
+\]
+
+多分类交叉熵：
+
+\[
+L = -\sum_{k=1}^{K} y_k \log \hat{y}_k
+\]
+
+对于 one-hot 标签，只有正确类别 \(c\) 对应的项不为零：
+
+\[
+L = -\log \hat{y}_c
+\]
+
+因此，cross-entropy 的直觉就是：提高正确类别的预测概率，惩罚自信的错误预测。
+
+## 简单例子
+
+对句子“乔布斯创立了苹果公司”进行关系分类。输入特征包括“是否包含创立”、实体类型是否为人物和组织、两个实体之间的距离等。模型为 `founder_of`、`works_for` 和 `located_in` 计算 logits，再通过 softmax 输出概率，最终选择概率最高的 `founder_of`。
+
+## 优点与局限
+
+优点是结构简单、训练快、能输出概率、权重具有一定可解释性，适合作为分类 baseline。
+
+局限是本质上属于线性模型，效果依赖特征设计，难以自动理解复杂词序、语义组合、否定关系和长距离依赖。现代 NLP 因此使用 embedding 和神经网络自动学习表示。
+
+## 与 KG-LLM 方向的联系
+
+在知识图谱构建中，逻辑回归可以用于实体类型分类、关系分类和证据可信度判断。在 RAG 或 Agent 中，也可以用于查询路由和结果质量分类。
+
+更重要的是，现代 LLM 同样通过线性层产生词表 logits，再使用 softmax 输出下一个 token 的概率，并通过 cross-entropy 训练。区别在于，LLM 的输入表示由 Transformer 自动学习，而不是人工设计。
+
+## 导师可能提问
+
+**Q1：sigmoid 和 softmax 有什么区别？**
+
+sigmoid 常用于二分类；softmax 用于多个互斥类别，并保证类别概率之和为 1。
+
+**Q2：cross-entropy 的直觉是什么？**
+
+正确类别概率越低，损失越大；正确类别概率越接近 1，损失越小。
+
+**Q3：逻辑回归与 Transformer 分类器有什么联系？**
+
+Transformer 负责生成上下文表示，最后仍可通过线性层和 softmax 完成分类。
+
+## 一句话总结
+
+逻辑回归通过线性层、sigmoid/softmax 和 cross-entropy 完成概率分类，这套机制也是现代神经网络与 LLM 输出层的直接基础。
+"""
+
+
+CHAPTER_6_NOTE = r"""# Chapter 6: Neural Networks
+
+## 章节定位
+
+本章是从传统分类模型过渡到 Transformer 和 LLM 的基础章节。逻辑回归通常直接在人工特征上完成线性分类，而神经网络在输入和输出之间加入隐藏层，通过训练自动形成任务相关的内部表示。核心变化是从 feature engineering 转向 representation learning。
+
+## 核心概念
+
+- **Neural Unit**：先计算线性组合，再通过激活函数：
+
+  \[
+  z = w \cdot x + b,\quad a = g(z)
+  \]
+
+- **Feedforward Network**：信息从输入层依次流向隐藏层和输出层，网络中没有循环。
+- **Hidden Representation**：隐藏层输出 \(h\) 是模型学习到的新表示。
+- **Activation Function**：sigmoid、tanh、ReLU 等函数为网络引入非线性。
+- **Backpropagation**：从最终损失开始，利用链式法则逐层计算参数梯度。
+
+## 方法直觉
+
+单隐藏层分类网络可以表示为：
+
+\[
+h = g(Wx+b)
+\]
+
+\[
+z = Uh+c
+\]
+
+\[
+\hat{y} = softmax(z)
+\]
+
+隐藏层先把原始输入变换到新的表示空间，输出层再基于该表示完成分类。神经网络可以看作在自动学习出的特征 \(h\) 上运行逻辑回归。
+
+非线性激活至关重要。若每一层都只有线性变换，多层计算仍可合并为一个线性层，无法获得更强的表达能力。XOR 例子说明，隐藏层可以重新组织输入，使原本线性不可分的问题变得可分。
+
+## 关键公式
+
+前向传播：
+
+\[
+a^{[i]} = g^{[i]}(W^{[i]}a^{[i-1]} + b^{[i]})
+\]
+
+分类损失：
+
+\[
+L = -\sum_k y_k \log \hat{y}_k
+\]
+
+参数更新：
+
+\[
+W \leftarrow W - \eta \frac{\partial L}{\partial W}
+\]
+
+反向传播负责计算各层参数对最终损失的梯度。现阶段只需理解“前向算结果、反向算责任”，无需完整推导链式求导。
+
+## 简单例子
+
+对“任正非创立了华为”进行关系分类。模型先取得各 token 的 embedding，再通过隐藏层学习人物、组织和“创立”等信息的组合表示，最后通过 softmax 输出：
+
+```text
+founder_of   0.88
+works_for    0.07
+located_in   0.01
+no_relation  0.04
+```
+
+预测结果可以转换为候选三元组：
+
+```text
+（任正非，founder_of，华为）
+```
+
+## 优点与局限
+
+优点是能够自动学习特征、建模非线性关系并进行端到端训练。局限是需要较多数据和计算资源，训练过程不容易解释，且普通前馈网络无法自然处理长序列、图结构和显式多跳推理。
+
+Pooling 可以把多个 token embedding 压缩为一个句子向量，效率较高但可能损失顺序；concatenation 能保留更多位置信息，但输入维度更大。
+
+## 与 KG-LLM 方向的联系
+
+Embedding 为 token、实体和关系提供初始向量，神经网络进一步把它们转换为任务相关表示。Transformer 和 LLM 仍然依赖线性层、非线性激活、多层表示与反向传播。
+
+在知识图谱方向，神经网络可以用于实体链接、关系分类、三元组评分和证据排序；但普通 MLP 不直接理解图拓扑，也不能独立生成可解释的多跳路径。KG-RAG 需要将连续表示学习与实体关系、图检索和证据验证结合起来。
+
+## 导师可能提问
+
+**Q1：神经网络为什么比逻辑回归更强？**
+
+因为隐藏层和非线性激活可以自动学习新表示，并建模非线性关系。
+
+**Q2：为什么不能只堆叠线性层？**
+
+多个线性层仍可合并为一个线性层，增加深度没有意义。
+
+**Q3：反向传播的作用是什么？**
+
+根据最终损失计算每个参数的梯度，为参数更新提供方向。
+
+## 一句话总结
+
+神经网络的核心价值是通过多层非线性计算自动学习表示，而这套表示学习机制构成了 Transformer、LLM 和神经信息抽取模型的基础。
+"""
+
+
+CHAPTER_18_NOTE = r"""# Chapter 18: Context-Free Grammars
+
+## 章节定位
+
+CFG 是传统 NLP 中描述句法结构的重要方法。它试图回答：一个句子中的词如何组成短语，短语如何组成完整句子。
+
+相比 n-gram 只关注词序列概率，CFG 关注语言的层次结构。
+
+## 核心概念
+
+### Context-Free Grammar
+
+CFG 是由非终结符、终结符、产生规则和开始符号组成的规则系统：
+
+\[
+G=(N,\Sigma,R,S)
+\]
+
+核心形式：
+
+```text
+S -> NP VP
+```
+
+表示句子可以由名词短语和动词短语组成。
+
+### Parse Tree
+
+句法树表示一句话内部的层次结构：
+
+```text
+句子 -> 短语 -> 单词
+```
+
+### Parsing
+
+Parsing 是根据输入句子生成句法结构的过程。
+
+### Constituency
+
+成分句法认为句子由不同层次的组成部分构成，例如：
+
+```text
+The big dog
+```
+
+整体可以作为一个名词短语。
+
+## 方法直觉
+
+CFG 使用人工规则描述语言结构：
+
+```text
+文本
+↓
+匹配语法规则
+↓
+生成句法树
+```
+
+例如：
+
+```text
+Steve Jobs founded Apple.
+```
+
+可以分析为：
+
+```text
+NP + VP
+```
+
+进一步帮助识别：
+
+```text
+subject + verb + object
+```
+
+## 关键公式
+
+CFG：
+
+\[
+G=(N,\Sigma,R,S)
+\]
+
+其中：
+
+- \(N\)：非终结符；
+- \(\Sigma\)：终结符；
+- \(R\)：产生规则；
+- \(S\)：开始符号。
+
+现阶段只需理解 CFG 是规则系统，不需要掌握完整形式语言理论。
+
+## 简单例子
+
+句子：
+
+```text
+Steve Jobs founded Apple.
+```
+
+句法结构：
+
+```text
+NP:
+Steve Jobs
+
+VP:
+founded Apple
+```
+
+可以进一步用于关系抽取：
+
+```text
+(Steve Jobs, founder_of, Apple)
+```
+
+## 优点与局限
+
+优点：
+
+- 可解释；
+- 能表达层次结构；
+- 适合规则明确场景。
+
+局限：
+
+- 规则难覆盖真实语言；
+- 不理解语义；
+- 难处理复杂歧义；
+- 不适合直接完成知识推理。
+
+## 与 KG-LLM 方向的联系
+
+CFG 是早期信息抽取的重要工具：
+
+```text
+文本 -> 句法分析 -> 关系抽取 -> 知识图谱
+```
+
+现代 KG-LLM 系统更多使用 Transformer 和 LLM 自动学习句法和语义表示。
+
+CFG 不负责知识推理，只提供语言结构信息。
+
+## 导师可能提问
+
+**Q1：CFG 为什么重要？**
+
+因为它提供了语言层次结构的形式化表示。
+
+**Q2：CFG 和 LLM 区别？**
+
+CFG 使用人工规则，LLM 从数据中学习语言规律。
+
+**Q3：CFG 能直接生成知识图谱吗？**
+
+不能，只能辅助发现候选结构，真正的实体关系判断需要 IE 和 KG 方法。
+
+## 一句话总结
+
+CFG 是传统 NLP 中描述句法结构的方法，它帮助理解语言组成规律，但现代 LLM 更多通过神经表示学习自动获得类似能力。
+"""
+
+
+CHAPTER_19_NOTE = r"""# Chapter 19: Dependency Parsing
+
+## 章节定位
+
+Dependency Parsing 将句子表示为词与词之间的有向依存关系。与 CFG 通过 NP、VP 等短语节点描述层次结构不同，依存句法直接连接中心词（head）与依存词（dependent），因此更容易呈现谓词、主语、宾语和修饰语之间的关系。
+
+对于关系抽取，本章比 CFG 更重要，因为实体之间的语义关系通常由句中的谓词—论元结构表达。
+
+## 核心概念
+
+**Head–Dependent**：每条依存边从中心词指向依存词。
+
+**Dependency Relation**：依存边带有语法标签。常见标签包括：
+
+- `nsubj`：主语；
+- `obj`：直接宾语；
+- `nmod`：名词修饰；
+- `amod`：形容词修饰；
+- `compound`：复合词；
+- `root`：句子根节点。
+
+**Dependency Tree**：通常有一个 root；除 root 外，每个 token 只有一个 head；从 root 到每个 token 存在唯一路径。
+
+**Projectivity**：如果依存树可以画成无交叉边，则称为 projective。自由语序和复杂句式可能形成 non-projective tree。
+
+## 方法直觉
+
+依存解析需要解决两个问题：
+
+1. 判断每个 token 的 head；
+2. 判断该依存边的关系标签。
+
+Transition-based parsing 维护 stack 和 buffer，通过 `SHIFT`、`LEFTARC`、`RIGHTARC` 等动作逐步构建依存树。它速度快，但早期错误可能向后传播。
+
+Graph-based parsing 为所有可能的依存边打分，再寻找总分最高的合法树：
+
+\[
+\hat{T}=\arg\max_{T\in\mathcal{T}(S)} Score(T,S)
+\]
+
+现代神经解析器先用 encoder 生成 token 的上下文表示，再判断两个 token 构成 head-dependent 边的可能性。
+
+## 关键公式
+
+依存结构可以表示为：
+
+\[
+G=(V,A)
+\]
+
+其中 \(V\) 是 token 节点，\(A\) 是有向依存边。
+
+评价指标：
+
+\[
+UAS=\frac{head正确的token数}{token总数}
+\]
+
+\[
+LAS=\frac{head和label都正确的token数}{token总数}
+\]
+
+UAS 只检查中心词，LAS 同时检查中心词和关系标签。
+
+## 简单例子
+
+句子：
+
+```text
+任正非于1987年创立了华为。
+```
+
+核心依存结构：
+
+```text
+创立 ─nsubj→ 任正非
+创立 ─obj──→ 华为
+创立 ─obl──→ 1987年
+```
+
+## 后续补充
+
+本章当前笔记保留到“简单例子”部分。优点与局限、与 KG-LLM 方向的联系、导师可能提问和一句话总结可在后续材料补充后继续扩展。
+"""
 
 
 CHAPTER_9_NOTE = r"""# Chapter 9 · Masked Language Models
@@ -711,9 +1275,14 @@ Coreference resolution 将同一实体的不同 mention 合并，减少知识图
 
 
 NOTE_CONTENT_BY_NUMBER = {
+    3: CHAPTER_3_NOTE,
+    4: CHAPTER_4_NOTE,
+    6: CHAPTER_6_NOTE,
     9: CHAPTER_9_NOTE,
     10: CHAPTER_10_NOTE,
     11: CHAPTER_11_NOTE,
+    18: CHAPTER_18_NOTE,
+    19: CHAPTER_19_NOTE,
     17: CHAPTER_17_NOTE,
     20: CHAPTER_20_NOTE,
     21: CHAPTER_21_NOTE,
@@ -966,6 +1535,368 @@ INTERN_RECORDS = [
 4. 使用 AI Agent 辅助完成基础代码开发
 5. 后续逐步接入真实运维数据，完善监控、告警与知识问答功能""",
     },
+    {
+        "day": 4,
+        "record_date": date(2026, 7, 20),
+        "title": "离线依赖排查与开发交付边界梳理",
+        "tags": "离线依赖,npm,Windows,AI开发,交付",
+        "content": r"""## 当天目标
+
+围绕服务器运维工具的离线开发环境，定位前端依赖准备和内外网交付过程中的不确定点。
+
+## 完成事项
+
+* 检查前端项目离线安装时的缺包现象，并梳理 `package-lock.json` 与实际 npm 包之间的关系。
+* 确认仅查看 lock 文件中的 `packages` 字段，不能证明离线安装所需的包已经完整准备。
+* 研究在无法访问 npm 仓库的操作机中定位具体缺失依赖的方法；尝试将外网电脑下载的依赖压缩包传入内网操作机。
+* 排查大型依赖压缩包在操作机中打开或解压无响应的问题。
+* 对比 Cline、Continue、Codex 插件和内网千问模型在工程开发中的适用边界。
+
+## 遇到的问题
+
+内网操作机不能直接访问 npm 仓库，安装时提示的缺失依赖会变化；传入的大型压缩包也出现打开或解压异常。对于大量工程报错，内网模型的上下文理解和修复稳定性仍有限。
+
+## 解决思路
+
+不再根据报错逐个猜测依赖。后续会先在外网开发机完成一次干净安装，再结合 lock 文件和 npm 缓存统一制作离线依赖包；同时将“依赖是否完整”和“项目代码是否正确”拆开验证，在外网完成开发、构建和测试后再传输完整产物。
+
+## 当天收获
+
+离线交付不是简单复制 `node_modules`。操作系统、Node 版本、CPU 架构、锁文件和构建流程都需要保持一致；依赖问题必须依靠可复现的安装流程解决，而不能依赖 AI 临时修补。
+
+## 下一步计划
+
+完成外网环境的干净安装验证，并整理可在内网复用的离线依赖与构建产物清单。""",
+    },
+    {
+        "day": 5,
+        "record_date": date(2026, 7, 21),
+        "title": "后端最小闭环与安全执行边界设计",
+        "tags": "FastAPI,任务编排,Mock Executor,Dry Run,安全设计",
+        "content": r"""## 当天目标
+
+完善服务器运维工具的后端最小闭环，并明确真实执行能力接入前的安全边界。
+
+## 完成事项
+
+* 完成项目工程初始化和后端最小调用链设计：`API 请求 → 任务服务 → Executor → 输出解析 → 状态持久化`。
+* 设计可替换执行器接口：`MockExecutor`、`LocalScriptExecutor`、`SshScriptExecutor`；同时设计 `MockOutputParser`、`StructuredJsonParser`、`LegacyServicesOutputParser` 三类输出解析器。
+* 增加数据库模型、任务服务、Mock 执行器、任务运行器、种子数据和基础测试结构，并初始化 Alembic 数据库迁移配置。
+* 初始化前端 Vite、TypeScript 和统一 API Client，前端构建已实际通过。
+* 后端代码已落地；因本机缺少符合要求的 Python 3.12 环境，尚未实际完成后端启动、迁移和测试执行。
+
+## 遇到的问题
+
+真实服务器、SSH、Ansible 和生产脚本尚未联调，且本机 Python 版本不满足后端运行要求。如果直接将前端按钮连接到 Shell 命令，后续会难以控制权限、审计和环境差异。
+
+## 解决思路
+
+项目默认关闭真实写操作：`WRITE_OPERATIONS_ENABLED=false`、`PRODUCTION_OPERATIONS_ENABLED=false`。SSH 地址、账号、`services.sh` 路径、inventory、Playbook、tag 和堡垒机方式均通过配置注入，不写死在代码中；当前只使用 Fake Transport、Dry Run、脱敏 fixtures 与模拟 stdout/stderr。
+
+## 当天收获
+
+运维系统需要将执行器、协议适配层、输出解析器和任务状态解耦。这样从 Mock 环境切换到内网真实环境时，业务代码无需大规模重写。
+
+## 下一步计划
+
+补齐符合要求的 Python 环境后执行后端启动、迁移和测试；继续以 Mock 输出验证任务状态流转。""",
+    },
+    {
+        "day": 6,
+        "record_date": date(2026, 7, 22),
+        "title": "MVP 范围、真实接入边界与离线交付方案",
+        "tags": "MVP,Ansible,服务运维,适配器,Docker,离线部署",
+        "content": r"""## 当天目标
+
+继续拆解运维工具需求，明确 MVP 范围、真实环境接入边界和离线交付准备项。
+
+## 完成事项
+
+* 进一步梳理现有 `services.sh` 和 Ansible 脚本可能提供的能力。
+* 明确 MVP 优先支持服务列表与状态查看、单个及批量服务操作、主机视角查询、服务拓扑、任务执行记录，以及 stdout、stderr 和退出码展示。
+* 确认 `ops_adapter.sh` 当前只实现协议骨架和 Dry Run，真实命令映射等待进入内网、确认实际脚本参数后再补充。
+* 规定项目报告需严格区分“已实现、已自动化测试、已模拟验证、等待内网真实验证”。
+* 评估 LangGraph 与复杂 Agent 工作流的必要性；当前优先保证确定性运维流程、权限控制和可审计任务执行。
+* 讨论外网开发、Docker 打包、离线导入内网操作机的交付方式。
+
+## 遇到的问题
+
+目前只有部分脚本截图，缺少完整业务脚本和真实命令参数；服务器、堡垒机、账号权限和 inventory 配置也尚未明确，内外网运行环境可能存在差异。
+
+## 解决思路
+
+先通过适配器接口稳定前后端协议，用 Mock 数据和模拟输出验证任务状态流转。进入内网后，只替换执行器、适配脚本和环境配置；Docker 镜像之外还应准备配置模板、启动脚本、镜像校验值和部署说明。
+
+## 当天收获
+
+MVP 的重点是建立安全、可替换、可审计的执行链路，而不是一次性覆盖所有运维能力。真实业务逻辑不完整时，固定协议比猜测脚本参数更可靠。
+
+## 下一步计划
+
+继续完善 Dry Run 的任务协议和模拟输出，并准备离线镜像与部署材料清单。""",
+    },
+    {
+        "day": 7,
+        "record_date": date(2026, 7, 23),
+        "title": "Windows 与 Docker 离线部署环境排查",
+        "tags": "Windows 10,WSL2,Docker,CPU虚拟化,离线部署",
+        "content": r"""## 当天目标
+
+排查 Windows 10、WSL2、Docker 与 CPU 虚拟化条件，为内网离线部署做准备。
+
+## 完成事项
+
+* 梳理 Windows 10 安装 WSL2 的完整流程，并检查不同机器的 CPU 虚拟化状态。
+* 确认内网操作机已支持并开启虚拟化，可作为 Docker 运行环境。
+* 排查联想开天 N80Z BIOS 中虚拟化选项不易定位的问题，并分析未开启虚拟化时 Docker Desktop 与 WSL2 的限制。
+* 讨论替代交付路径：在外网个人电脑完成开发和 Linux 镜像构建，导出离线镜像文件，经安全介质传入内网操作机后加载并启动。
+* 讨论对项目脱敏后上传 GitHub，再由外网开发机完成构建的可行性。
+
+## 遇到的问题
+
+部分机器的 BIOS 虚拟化选项难以确认；没有开启 CPU 虚拟化的设备无法满足 Docker Desktop 和 WSL2 的运行条件，也不适合作为构建环境。
+
+## 解决思路
+
+将“构建镜像”和“运行镜像”分离：不依赖问题机器构建，在具备条件的外网开发机生成 Linux 镜像并导出；内网操作机只承担镜像加载和启动。传输前保持项目脱敏，并按公司安全要求使用安全介质。
+
+## 当天收获
+
+离线部署的可行性不仅取决于代码，还取决于虚拟化能力、操作系统组件、镜像格式和传输流程。提前验证运行环境可以避免把部署问题误判为应用问题。
+
+## 下一步计划
+
+在已开启虚拟化的内网操作机上验证镜像导入与启动流程，并补充离线部署说明和校验步骤。""",
+    },
+    {
+        "day": 8,
+        "record_date": date(2026, 7, 27),
+        "title": "进入内网环境，梳理运维平台真实执行链路",
+        "tags": "运维开发,Ansible,FastAPI,内网环境,权限设计,实习记录",
+        "content": r"""## 今日工作概览
+
+**日期：** 2026-07-27<br />
+**岗位：** 运维开发 / AI 应用开发实习生<br />
+**项目：** CNP 服务器运维管理平台<br />
+**工作状态：** 内网环境梳理与协议确认
+
+我进入无外网的内网操作环境，重点核对运维平台与真实服务器环境之间的连接方式，以及 Ansible 调用链路。
+
+## 完成事项
+
+* 梳理 Windows 10 无网操作机、Linux Ansible 控制节点和被管理业务服务器三类节点的职责。
+* 检查目标业务服务器后发现其本身没有可直接使用的 `ansible-playbook`，据此判断 Ansible 不应直接在业务服务器执行。
+* 整理平台预期调用链：`Web 前端 → FastAPI 后端 → Task Service → Executor → Linux Ansible 控制节点 → 目标业务服务器`。
+* 初步梳理用户、密码、组织架构和直属上下级等基础管理需求，并思考它们与运维权限、告警分派、审批流程的关系。
+* 明确外网 Codex 修改的脱敏代码进入内网后需要人工同步，后续需保留完整文件变更清单。
+
+## 遇到的问题
+
+真实的 Ansible 执行节点尚未完全确认；操作机、控制节点和业务服务器的职责边界仍需继续核实。外网代码不能直接同步到内网，也容易带来版本不一致；真实路径和命令参数不完整，不能提前写死。
+
+## 分析与处理思路
+
+我继续将执行层抽象为可替换的 Executor，所有 SSH、Ansible、脚本路径和资产信息均通过配置注入。外网只处理脱敏代码与协议设计，不接触真实环境参数；确认控制节点后，再从只读状态查询与 Dry Run 开始验证。
+
+## 今日收获
+
+企业运维平台不是前端按钮直接调用 Shell 命令。先厘清操作机、控制节点和业务服务器的角色，才能正确处理权限、网络、配置和审计边界。
+
+## 后续计划
+
+继续确认真实 Ansible 控制节点和只读查询入口，并将每次外网修改整理为便于内网人工同步的文件级清单。""",
+    },
+    {
+        "day": 9,
+        "record_date": date(2026, 7, 28),
+        "title": "确认 Ansible 控制节点，协助梳理蓝鲸监控告警流程",
+        "tags": "运维开发,Ansible,蓝鲸监控,告警中心,智能体,实习记录",
+        "content": r"""## 今日工作概览
+
+**日期：** 2026-07-28<br />
+**岗位：** 运维开发 / AI 应用开发实习生<br />
+**项目：** CNP 服务器运维管理平台、蓝鲸监控告警<br />
+**工作状态：** 控制节点确认与告警流程梳理
+
+我继续确认 Ansible 控制节点，同时协助了解蓝鲸监控告警环境及告警处理流程。
+
+## 完成事项
+
+* 在 Linux 控制节点确认 `ansible-playbook` 位于用户目录下的 `.local/bin`，明确后续需配置完整绝对路径。
+* 进一步确认当前拓扑为 `Windows 无网操作机 → 运维管理平台 → Linux Ansible 控制节点 → 业务服务器`；当前先在 Windows 测试，但架构不限定只能部署在 Windows。
+* 协助梳理蓝鲸监控告警链路：指标采集、规则匹配、告警产生、通知、分派、负责人确认、处理与关闭。
+* 梳理服务负责人、部门、值班人员、直属上级和升级通知对象与告警分派的关联，并初步考虑将蓝鲸告警事件接入运维智能体。
+
+## 遇到的问题
+
+`ansible-playbook` 不一定在系统 PATH 中，直接调用可能失败；部分真实脚本参数和 Inventory 配置仍待内网确认。告警系统与服务资产、负责人、组织数据尚未完全打通，智能体也不能直接根据告警执行生产命令。
+
+## 分析与处理思路
+
+将 Ansible 可执行文件路径配置化，并通过 `/ready` 或环境检查接口确认执行环境。告警接收先用脱敏样本和模拟事件验证，智能分析与真实执行严格解耦；高风险操作必须经过权限校验、人工审批和审计记录。
+
+## 今日收获
+
+监控系统负责发现问题，告警中心负责组织问题，智能体辅助理解问题，Executor 才执行受控操作。几部分必须分层，不能让大模型直接控制生产环境。
+
+## 后续计划
+
+继续补充执行环境检查项，梳理告警事件、服务资产与组织负责人之间的数据映射。""",
+    },
+    {
+        "day": 10,
+        "record_date": date(2026, 7, 29),
+        "title": "完善只读安全边界，验证运维执行器异常场景",
+        "tags": "运维开发,安全设计,Mock Executor,千问大模型,Python,实习记录",
+        "content": r"""## 今日工作概览
+
+**日期：** 2026-07-29<br />
+**岗位：** 运维开发 / AI 应用开发实习生<br />
+**项目：** CNP 服务器运维管理平台、运维智能体<br />
+**工作状态：** 本地模拟验证与安全边界完善
+
+我继续完善执行安全边界，并用模拟脚本检查执行器在异常场景下的行为。
+
+## 完成事项
+
+* 明确第一阶段只开放服务状态查询；前端暂时禁用启动、停止等写操作入口，后端对未开放写操作返回 `403`，并保留用户请求、任务状态和执行结果的审计记录。
+* 对 `LocalServicesExecutor` 进行模拟验证，覆盖服务运行、已停止、主机不可达、非零退出码、超时和参数注入防护等场景。
+* 确认 `command_profile=pending-confirmation` 时系统会在真实执行前安全终止，执行配置未确认时 `/ready` 返回未就绪。
+* 明确当前仅属于本地模拟、Fake Script 和安全边界验证，尚未接入真实 `services.sh`、Inventory 或生产资产。
+* 参与运维智能体方案梳理，明确内网千问主要用于告警解释、日志总结、知识检索、排障建议和结构化处理报告，不能自由拼接或执行 Shell 命令。
+
+## 遇到的问题
+
+真实脚本输出格式尚未完全确认，Mock 输出可能与真实脚本存在差异；大模型生成建议也有幻觉和越权风险，只在前端关闭按钮不足以保障安全。
+
+## 分析与处理思路
+
+我保留 `MockExecutor`、`LocalScriptExecutor`、`SshScriptExecutor` 和多种 Output Parser 的可替换设计；所有工具参数经过 Schema 校验，命令采用白名单和固定参数映射，写操作必须经后端权限校验。
+
+## 今日收获
+
+运维智能体的价值不是自动执行更多命令，而是在可控风险下帮助人收集证据、理解告警和生成建议。真实执行必须保持确定性、可审计、可回滚。
+
+## 后续计划
+
+待内网确认真实脚本协议后，继续完善 Parser，并开展只读状态查询链路验证。""",
+    },
+    {
+        "day": 11,
+        "record_date": date(2026, 7, 30),
+        "title": "完成 Linux 离线交付准备，参与金融对话智能体研发",
+        "tags": "Docker,Linux,离线交付,Codex,FICC,金融科技,智能体,实习记录",
+        "content": r"""## 今日工作概览
+
+**日期：** 2026-07-30<br />
+**岗位：** 运维开发 / AI 应用开发实习生<br />
+**项目：** CNP 服务器运维管理平台、中汇亿达对话机器人智能体<br />
+**工作状态：** 交付材料准备与业务学习
+
+我完成运维平台 Linux 离线交付相关的代码、配置和文档准备，同时参与金融业务与对话机器人智能体的学习和研发。
+
+## 完成事项
+
+* 完成交付所需的 `backend/Dockerfile`、`frontend/Dockerfile`、`docker-compose.yml`、`scripts/export-images.sh`、`scripts/import-images.sh` 和 `docs/DOCKER-OFFLINE-DEPLOY.md` 等材料准备。
+* 区分 API、Worker、Web 的镜像、命令、日志和生命周期；生产配置默认运行构建镜像，开发 profile 挂载源码，配置、SQLite 数据和日志使用外部挂载。
+* 内部脚本目录按只读方式挂载，未将真实业务脚本、SSH 密钥、证书或密码打进镜像。
+* 重建 Python 虚拟环境，并完成已提供的验证记录：Python 3.13.14、后端 Pytest `144 passed, 1 warning`、Ruff、compileall、前端 typecheck、lint、`3 passed` 测试、build、`pip check`、Shell 语法、Compose YAML 与 `git diff --check` 均通过。
+* 初步学习国内银行间金融市场、FICC 与量化分析基础；参与“中汇亿达”对话机器人智能体研发，了解问题理解、知识检索、多轮上下文、结构化回答与敏感信息保护。
+
+## 遇到的问题
+
+当前机器没有可用 Docker Socket 或 Compose v2，无法实际执行 Docker build、save、load 和内网启动；外网构建与内网运行环境可能有差异。金融术语和流程也需要持续理解，智能体不能只追求回答通顺。
+
+## 分析与处理思路
+
+我计划在具备条件的外网环境完成镜像构建与导出，并生成 SHA256 校验文件，再在隔离环境模拟导入；内网加载后仍需验证环境变量、挂载路径和健康检查。金融智能体采用知识库检索、证据引用与结构化输出约束，对不确定问题不让模型自由编造。
+
+## 今日收获
+
+技术交付包含代码之外的镜像、配置模板、导入导出脚本、校验、部署文档和回滚说明。参与金融智能体也让我更明确：业务知识是 AI 系统准确落地的重要基础。
+
+## 后续计划
+
+在具备 Docker 条件的机器上补做镜像构建与离线导入测试，并继续参与金融对话智能体研发和业务知识学习。""",
+    },
+    {
+        "day": 12,
+        "record_date": date(2026, 7, 31),
+        "title": "完善 Ubuntu 开发环境，复盘内外网智能体开发模式",
+        "tags": "Linux,Ubuntu,驱动,Docker,Codex,千问大模型,蓝鲸监控,实习记录",
+        "content": r"""## 今日工作概览
+
+**日期：** 2026-07-31<br />
+**岗位：** 运维开发 / AI 应用开发实习生<br />
+**项目：** 开发环境建设、CNP 服务器运维管理平台<br />
+**工作状态：** 环境排查与本周复盘
+
+我继续搭建 Ubuntu 双系统开发环境，排查图形显示、工具和依赖问题，并复盘本周的内外网智能体开发模式。
+
+## 完成事项
+
+* 用 `xrandr` 检查显示输出，发现当前 XWayland 最高只识别到 1024×768；初步判断与显卡驱动、显示模式识别、XWayland 或内核启动参数有关，而不只是桌面缩放。
+* 检查并准备 Python 3.13、Git、GitHub CLI、VS Code、Node.js、Codex CLI 和 Docker 等 Ubuntu 开发工具，梳理 `.deb`、`.rpm`、AppImage 的适用场景及 Node.js、Codex CLI 的版本依赖。
+* 明确外网 Codex 用于脱敏代码的开发、测试、重构、文档和离线交付材料；内网千问用于内部知识问答、告警和脱敏日志推理，并通过受控 Tool Calling 调用内部工具，禁止将敏感数据发送到外网。
+* 复盘蓝鲸监控、告警分派、运维智能体和组织权限的闭环：`监控指标 → 蓝鲸告警 → 告警分派 → 智能体收集证据 → 内网千问分析 → 人工确认/审批 → Executor 受控操作 → 审计 → 告警关闭`。
+
+## 遇到的问题
+
+Ubuntu 显示分辨率仍未达到硬件正常水平；Linux 软件安装需区分发行版包格式，Docker 也受虚拟化与运行环境限制。开发环境装好并不代表项目已经在内网部署成功。
+
+## 分析与处理思路
+
+后续继续确认显卡型号、驱动加载和启动日志，优先使用发行版软件源或官方 `.deb` 包；固定 Python、Node、npm 版本，并用 Git 和变更清单控制内外网版本。环境验证拆分为代码、依赖、Docker 构建、离线导入和内网真实验证。
+
+## 今日收获
+
+AI 辅助开发能提高代码实现效率，但真实项目仍离不开环境排查、版本控制、权限管理、业务理解和部署验证。外网 Codex 与内网千问分别承担开发阶段和运行阶段的职责，并非互相替代。
+
+## 后续计划
+
+继续排查 Ubuntu 显示驱动问题，完善开发环境，并推进 Docker 离线导入和内网只读验证。""",
+    },
+    {
+        "day": 13,
+        "record_date": date(2026, 7, 31),
+        "title": "2026 年第 31 周实习总结：从运维平台到内网智能体闭环",
+        "tags": "周总结,运维开发,蓝鲸监控,智能体,Ansible,Docker,Linux,FICC,实习记录",
+        "content": r"""## 本周工作概览
+
+**周期：** 2026-07-27 至 2026-07-31<br />
+**岗位：** 运维开发 / AI 应用开发实习生<br />
+**项目：** CNP 服务器运维管理平台、蓝鲸监控告警、中汇亿达对话机器人智能体<br />
+**工作状态：** 内网链路梳理、模拟验证与交付准备
+
+本周我从内网运行环境出发，推进运维平台的执行链路、安全边界和离线交付准备，同时参与告警、智能体和金融业务学习。
+
+## 本周主要工作
+
+* 梳理 Windows 操作机、Linux Ansible 控制节点与业务服务器的调用关系，并在控制节点确认 `ansible-playbook`。
+* 将平台第一阶段限定为状态查询，完成 Executor 多种异常场景的模拟验证。
+* 协助了解蓝鲸监控告警流程，梳理组织架构、直属上下级、告警分派和升级通知需求。
+* 参与运维智能体设计，明确内网千问的运行时职责；完成 Linux 与 Docker 离线交付材料准备及相关自动化验证记录。
+* 参与“中汇亿达”对话机器人智能体研发，初步学习银行间金融市场与 FICC 量化基础，并搭建 Ubuntu 开发环境。
+
+## 本周技术进展
+
+我进一步明确 Executor 与 Parser 的解耦方式，隔离状态查询和写操作，并将权限校验和审计放在后端。告警分派需与组织架构关联；蓝鲸告警可为运维智能体提供事件入口，内网千问负责受控 Tool Calling 下的解释和建议，外网 Codex 仅辅助脱敏开发。Docker 离线交付、Python 后端测试和 Linux 环境排查也被纳入同一条交付链路。
+
+## 本周业务收获
+
+我开始理解企业监控告警从发现、分派到关闭的实际流程，也认识到组织关系会影响权限、告警分派和审批。参与金融智能体后，对银行间市场、FICC 和量化分析形成初步认识，并更具体地理解企业对话机器人可以成为业务系统入口，而不只是普通聊天工具。
+
+## 仍待完成与验证
+
+* 尚未完成真实生产服务器写操作验证，真实 `services.sh` 参数和输出格式仍待内网确认。
+* 尚未实际完成 Docker 镜像的 build、save、load 和内网启动，也未完成蓝鲸告警与运维智能体的完整生产联调。
+* 内网千问对所有告警和日志场景的准确性尚待验证；Ubuntu 显示驱动与分辨率问题仍需排查。
+* 对 FICC 和银行间市场目前仍处于初步学习阶段。
+
+## 下周计划
+
+继续确认真实脚本协议和 Inventory，完成状态查询链路的内网只读验证；完善蓝鲸告警事件接入、告警—服务—负责人—组织的数据映射，以及运维智能体的日志分析、知识检索、输出 Schema 和证据引用。同时在具备 Docker 条件的机器上进行镜像构建和离线导入测试，并持续参与对话机器人研发、金融业务学习和 Ubuntu 环境完善。""",
+    },
 ]
 
 
@@ -1143,11 +2074,131 @@ CHAPTERS = [
         mentor_questions=["为什么 entity linking 不能只依赖字符串匹配？", "Mention-pair、mention-ranking 与 entity-based 共指模型各有什么局限？", "共指或实体链接错误会怎样影响 GraphRAG 的多跳检索？"],
         resources=["Speech and Language Processing, Third Edition draft, Chapter 23", "Lee et al. (2017), End-to-end Neural Coreference Resolution", "Wu et al. (2020), Scalable Zero-shot Entity Linking with Dense Entity Retrieval"],
     ),
-    chapter(3, "N-gram Language Models", "中", "理解", 58, "用于理解语言模型历史和概率建模思想，对现代 LLM 是背景知识。", ["LLM"], "已完成"),
-    chapter(4, "Logistic Regression", "中", "理解", 62, "分类基础有助于理解传统 NER/IE 特征模型和评价方式。", ["NER", "IE"]),
-    chapter(6, "Neural Networks", "中", "理解", 72, "神经网络基础支撑 embedding、sequence labeling 和 Transformer。", ["LLM", "NER"], "已完成"),
-    chapter(18, "Context-Free Grammars", "中", "理解", 52, "句法结构有助于理解 IE 中的结构约束和语义角色分析。", ["IE", "Reasoning"]),
-    chapter(19, "Dependency Parsing", "中", "理解", 68, "依存分析可辅助关系抽取、事件抽取和证据路径解释。", ["IE", "KG", "Relation Extraction"]),
+    chapter(
+        3,
+        "N-gram Language Models",
+        "中",
+        "理解",
+        58,
+        "用于理解 next-token prediction、perplexity、smoothing 等概率语言建模基础；对现代 LLM 是背景知识，对 KG-RAG 则提供生成模型概率基础。",
+        ["LLM", "Language Model", "N-gram", "KG-RAG"],
+        "已完成",
+        positioning="本章使用最简单的统计语言模型 n-gram，引出如何根据上下文预测下一个 token、如何为句子分配概率、如何评价模型，以及如何处理未见序列。",
+        core_concepts=["Language Model", "N-gram", "Markov Assumption", "MLE", "Perplexity", "Smoothing", "Interpolation"],
+        outline="从语言模型任务出发，先用链式法则分解句子概率，再用 Markov assumption 将完整历史近似为固定窗口，并通过 MLE、perplexity、smoothing 和 interpolation 理解统计语言模型的基本问题。",
+        formulas_algorithms="Bigram MLE: P(w_t|w_{t-1}) = C(w_{t-1}, w_t) / C(w_{t-1})；Perplexity: PP(W) = P(w_{1:T})^{-1/T}；Laplace smoothing: P(w_t|w_{t-1}) = (C(w_{t-1}, w_t)+1)/(C(w_{t-1})+V)。",
+        examples="训练语料包含“查询 华为 创始人”和“查询 华为 总部”时，trigram 模型在看到“查询 华为”后可根据计数预测“创始人”或“总部”；若“查询 华为 CEO”未出现，MLE 概率为 0，平滑后获得较小的非零概率。",
+        summary="n-gram 是基于局部共现计数的经典语言模型。它简单、可解释、训练快，但只能使用短上下文，存在严重数据稀疏，无法学习语义相似性、结构化三元组、证据验证或多跳推理。",
+        mentor_questions=[
+            "为什么 n-gram 只使用有限上下文？",
+            "为什么需要 smoothing？",
+            "n-gram 与 LLM 的核心区别是什么？",
+        ],
+        resources=[
+            "Speech and Language Processing, Third Edition draft, Chapter 3 / N-gram Language Models",
+            "补充理解：perplexity、Laplace smoothing、interpolation 的直觉和适用边界",
+        ],
+    ),
+    chapter(
+        4,
+        "Logistic Regression",
+        "中",
+        "理解",
+        62,
+        "逻辑回归提供从特征表示、线性打分、sigmoid/softmax 到 cross-entropy 的概率分类基础，也是理解神经网络分类器和 LLM 输出层的直接入口。",
+        ["LLM", "Classifier", "Cross-Entropy", "IE"],
+        "已完成",
+        positioning="逻辑回归是经典监督分类模型，用于建立“输入特征 -> 线性打分 -> 概率 -> 损失 -> 参数更新”的核心机器学习链路。",
+        core_concepts=["Feature Representation", "Logit", "Sigmoid", "Softmax", "Cross-Entropy", "Gradient Descent"],
+        outline="从文本人工特征表示出发，理解线性 logit、二分类 sigmoid、多分类 softmax、cross-entropy 损失和参数更新，并连接现代 LLM 的词表 logits。",
+        formulas_algorithms="Logit: z = w·x + b；Sigmoid: P(y=1|x)=1/(1+exp(-(w·x+b)))；Softmax: P(y=k|x)=exp(z_k)/Σ_j exp(z_j)；二分类 CE: L=-[y log ŷ+(1-y)log(1-ŷ)]；one-hot 多分类 CE: L=-log ŷ_c。",
+        examples="对“乔布斯创立了苹果公司”进行关系分类时，可用“是否包含创立”、实体类型和实体距离等特征，为 founder_of、works_for、located_in 计算 logits，再经 softmax 选择 founder_of。",
+        summary="逻辑回归结构简单、训练快、能输出概率且权重有一定可解释性，适合作为分类 baseline；局限是线性模型依赖特征设计，难以自动理解复杂词序、语义组合、否定和长距离依赖。",
+        mentor_questions=[
+            "sigmoid 和 softmax 有什么区别？",
+            "cross-entropy 的直觉是什么？",
+            "逻辑回归与 Transformer 分类器有什么联系？",
+        ],
+        resources=[
+            "Speech and Language Processing, Third Edition draft, Chapter 4",
+            "补充理解：softmax、cross-entropy 与 LLM vocabulary logits 的关系",
+        ],
+    ),
+    chapter(
+        6,
+        "Neural Networks",
+        "中",
+        "理解",
+        72,
+        "神经网络把传统 feature engineering 推进到 representation learning，是 embedding、Transformer、LLM 和神经信息抽取模型的基础。",
+        ["LLM", "Representation Learning", "Embedding", "IE"],
+        "已完成",
+        positioning="本章是从传统分类模型过渡到 Transformer 和 LLM 的基础章节，核心变化是在输入和输出之间加入隐藏层，自动形成任务相关内部表示。",
+        core_concepts=["Neural Unit", "Feedforward Network", "Hidden Representation", "Activation Function", "Backpropagation", "Pooling"],
+        outline="先从 neural unit 和单隐藏层分类网络理解前向传播，再理解非线性激活为什么必要，最后以 backpropagation 和参数更新连接端到端训练。",
+        formulas_algorithms="Neural unit: z=w·x+b, a=g(z)；Single hidden layer: h=g(Wx+b), z=Uh+c, ŷ=softmax(z)；Forward: a^[i]=g^[i](W^[i]a^[i-1]+b^[i])；Update: W←W-η∂L/∂W。",
+        examples="对“任正非创立了华为”做关系分类时，模型可从 token embedding 经隐藏层学习人物、组织和“创立”的组合表示，再通过 softmax 输出 founder_of 0.88 等类别概率，形成候选三元组。",
+        summary="神经网络能自动学习特征、建模非线性关系并端到端训练；局限是需要更多数据和计算、可解释性较弱，普通 MLP 也无法自然处理长序列、图结构和显式多跳推理。",
+        mentor_questions=[
+            "神经网络为什么比逻辑回归更强？",
+            "为什么不能只堆叠线性层？",
+            "反向传播的作用是什么？",
+        ],
+        resources=[
+            "Speech and Language Processing, Third Edition draft, Chapter 6",
+            "补充理解：XOR、representation learning、pooling 与 concatenation 的取舍",
+        ],
+    ),
+    chapter(
+        18,
+        "Context-Free Grammars",
+        "中",
+        "理解",
+        52,
+        "CFG 提供传统 NLP 中语言层次结构的形式化表示，可辅助理解句法分析、关系抽取候选结构和早期信息抽取流程。",
+        ["CFG", "Parsing", "IE", "KG"],
+        "已完成",
+        positioning="CFG 是传统 NLP 中描述句法结构的重要方法，用于说明词如何组成短语、短语如何组成完整句子；相比 n-gram 关注词序列概率，CFG 关注层次结构。",
+        core_concepts=["Context-Free Grammar", "Parse Tree", "Parsing", "Constituency", "Production Rule"],
+        outline="理解 CFG 的四元组 G=(N,Σ,R,S)，再通过 S -> NP VP 等产生规则理解 parse tree、constituency 和 parsing 如何辅助发现 subject-verb-object 等候选结构。",
+        formulas_algorithms="CFG: G=(N,Σ,R,S)，其中 N 是非终结符，Σ 是终结符，R 是产生规则，S 是开始符号；本阶段只需理解它是规则系统，不做完整形式语言推导。",
+        examples="“Steve Jobs founded Apple.” 可被分析为 NP + VP，并进一步识别 subject + verb + object，辅助形成候选关系 (Steve Jobs, founder_of, Apple)。",
+        summary="CFG 可解释、能表达层次结构，适合规则明确场景；局限是规则难覆盖真实语言、不理解语义、难处理复杂歧义，也不能直接完成知识推理。",
+        mentor_questions=[
+            "CFG 为什么重要？",
+            "CFG 和 LLM 区别？",
+            "CFG 能直接生成知识图谱吗？",
+        ],
+        resources=[
+            "Speech and Language Processing, Third Edition draft, Chapter 18",
+            "补充理解：constituency parsing 与信息抽取候选结构的关系",
+        ],
+    ),
+    chapter(
+        19,
+        "Dependency Parsing",
+        "中",
+        "理解",
+        68,
+        "依存分析直接建模 head-dependent、谓词、主语、宾语和修饰关系，比 CFG 更贴近关系抽取中的谓词—论元结构。",
+        ["Dependency Parsing", "IE", "KG", "Relation Extraction"],
+        "已完成",
+        positioning="Dependency Parsing 将句子表示为词与词之间的有向依存关系。相比 CFG 的短语层次结构，依存句法直接连接中心词与依存词，更容易呈现谓词、主语、宾语和修饰语之间的关系。",
+        core_concepts=["Head-Dependent", "Dependency Relation", "Dependency Tree", "Projectivity", "Transition-based Parsing", "Graph-based Parsing", "UAS", "LAS"],
+        outline="先理解依存边如何连接 head 与 dependent，再区分 dependency relation、dependency tree 和 projectivity；方法上了解 transition-based parsing 与 graph-based parsing，评价上掌握 UAS 与 LAS。",
+        formulas_algorithms="依存结构可写为 G=(V,A)，V 是 token 节点，A 是有向依存边；graph-based parsing 目标为 T_hat=argmax_{T∈T(S)} Score(T,S)；UAS=head 正确 token 数/token 总数，LAS=head 和 label 都正确 token 数/token 总数。",
+        examples="“任正非于1987年创立了华为。”的核心依存结构可表示为：创立 -nsubj-> 任正非，创立 -obj-> 华为，创立 -obl-> 1987年。",
+        summary="依存解析比 CFG 更贴近关系抽取，因为实体关系通常由谓词—论元结构表达。本章当前笔记已覆盖核心概念、两类解析方法、评价指标和简单例子，优点局限及 KG-LLM 扩展联系待后续补充。",
+        mentor_questions=[
+            "Dependency Parsing 与 CFG 的表示重点有什么区别？",
+            "UAS 和 LAS 分别评价什么？",
+            "为什么依存结构对关系抽取更直接？",
+        ],
+        resources=[
+            "Speech and Language Processing, Third Edition draft, Chapter 19",
+            "补充理解：Universal Dependencies、transition-based parsing 与 graph-based parsing",
+        ],
+    ),
     chapter(24, "Discourse Coherence", "中", "理解", 57, "篇章连贯性影响多文档证据组织和长上下文推理。", ["Reasoning", "RAG"]),
     chapter(25, "Conversation and its Structure", "中", "理解", 50, "对导师问答、对话式检索和多轮研究助手有背景价值。", ["LLM", "Reasoning"]),
     chapter(12, "Machine Translation", "低", "略读", 40, "主要作为 seq2seq 和 attention 发展背景，非当前 KG-RAG 主线。", ["LLM"]),

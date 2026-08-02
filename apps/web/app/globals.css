@@ -3,46 +3,24 @@
 @tailwind utilities;
 
 :root {
-  --background: 222 47% 97%;
-  --foreground: 222 47% 10%;
-  --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
-  --primary: 239 84% 61%;
+  --background: 36 31% 95%;
+  --foreground: 45 5% 11%;
+  --card: 40 100% 99%;
+  --card-foreground: 45 5% 11%;
+  --primary: 13 47% 51%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 221 83% 95%;
-  --secondary-foreground: 226 70% 30%;
-  --muted: 220 30% 94%;
-  --muted-foreground: 215 18% 38%;
-  --accent: 188 95% 39%;
+  --secondary: 35 30% 91%;
+  --secondary-foreground: 45 5% 16%;
+  --muted: 36 24% 91%;
+  --muted-foreground: 42 7% 39%;
+  --accent: 13 47% 51%;
   --accent-foreground: 0 0% 100%;
-  --destructive: 0 72% 51%;
+  --destructive: 4 44% 45%;
   --destructive-foreground: 0 0% 100%;
-  --border: 220 27% 88%;
-  --input: 220 27% 88%;
-  --ring: 239 84% 61%;
-  --radius: 8px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: 224 38% 8%;
-    --foreground: 214 32% 91%;
-    --card: 224 35% 12%;
-    --card-foreground: 214 32% 91%;
-    --primary: 238 92% 72%;
-    --primary-foreground: 224 38% 8%;
-    --secondary: 226 34% 18%;
-    --secondary-foreground: 214 32% 91%;
-    --muted: 224 30% 16%;
-    --muted-foreground: 215 20% 68%;
-    --accent: 187 92% 55%;
-    --accent-foreground: 224 38% 8%;
-    --destructive: 0 70% 56%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 224 25% 22%;
-    --input: 224 25% 22%;
-    --ring: 238 92% 72%;
-  }
+  --border: 36 19% 82%;
+  --input: 36 19% 82%;
+  --ring: 13 47% 51%;
+  --radius: 10px;
 }
 
 * {
@@ -51,13 +29,7 @@
 
 body {
   @apply bg-background text-foreground antialiased;
-  background-image:
-    radial-gradient(circle at 20% 0%, hsl(239 84% 61% / 0.16), transparent 32rem),
-    radial-gradient(circle at 85% 15%, hsl(188 95% 39% / 0.13), transparent 28rem),
-    linear-gradient(hsl(var(--border) / 0.4) 1px, transparent 1px),
-    linear-gradient(90deg, hsl(var(--border) / 0.4) 1px, transparent 1px);
-  background-size: auto, auto, 42px 42px, 42px 42px;
-  background-attachment: fixed;
+  font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", Inter, ui-sans-serif, system-ui, sans-serif;
 }
 
 a {
@@ -65,16 +37,31 @@ a {
 }
 
 ::selection {
-  background: hsl(var(--primary) / 0.18);
+  background: hsl(var(--primary) / 0.22);
 }
 
 @layer components {
   .glass-panel {
-    @apply border bg-card/78 shadow-sm backdrop-blur-xl;
+    @apply border bg-card;
   }
 
   .gradient-text {
-    @apply bg-gradient-to-r from-indigo-600 via-violet-600 to-cyan-600 bg-clip-text text-transparent;
+    @apply text-primary;
+  }
+
+  .display-type {
+    font-family: Georgia, "Noto Serif SC", "Songti SC", serif;
+    font-weight: 400;
+    letter-spacing: -0.025em;
+  }
+
+  .technical-panel {
+    background: #202633;
+    color: #f4f1ea;
+  }
+
+  .editorial-rule {
+    border-color: hsl(var(--border));
   }
 
   .focus-ring {

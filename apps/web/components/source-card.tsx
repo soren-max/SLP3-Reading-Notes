@@ -30,11 +30,11 @@ export function SourceCard({ source }: { source: Source }) {
   const directions = source.research_direction.split(",").map((item) => item.trim()).filter(Boolean).slice(0, 5);
   return (
     <Link href={`/sources/${source.id}`} className="block h-full no-underline">
-      <Card className="group h-full hover:-translate-y-1 hover:border-primary/45 hover:shadow-xl hover:shadow-indigo-500/10">
+      <Card className="group h-full hover:border-primary/45">
         <CardHeader>
           <div className="flex items-start justify-between gap-3">
             <div className="flex gap-3">
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-indigo-600 to-cyan-500 text-white">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-foreground text-background">
                 <Icon className="h-5 w-5" />
               </div>
               <div>

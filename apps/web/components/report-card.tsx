@@ -41,7 +41,7 @@ export function ReportCard({ initialReport, sources }: { initialReport: Report; 
         </div>
       )}
       <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-        <Card className="border-primary/20 bg-gradient-to-br from-indigo-600 via-violet-600 to-cyan-600 text-white">
+        <Card className="technical-panel border-0 text-[#f4f1ea]">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
@@ -60,7 +60,7 @@ export function ReportCard({ initialReport, sources }: { initialReport: Report; 
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Link2 className="h-5 w-5 text-cyan-500" />
+              <Link2 className="h-5 w-5 text-primary" />
               研究方向联系
             </CardTitle>
           </CardHeader>
@@ -71,13 +71,13 @@ export function ReportCard({ initialReport, sources }: { initialReport: Report; 
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <SummaryList title="已完成章节" icon={<ListChecks className="h-5 w-5 text-emerald-500" />} items={report.completed_chapters} />
-        <SummaryList title="本阶段收获" icon={<Lightbulb className="h-5 w-5 text-indigo-500" />} items={report.current_gains} />
-        <SummaryList title="后续计划" icon={<ListChecks className="h-5 w-5 text-cyan-500" />} items={report.next_plan} />
+        <SummaryList title="已完成章节" icon={<ListChecks className="h-5 w-5 text-emerald-700" />} items={report.completed_chapters} />
+        <SummaryList title="本阶段收获" icon={<Lightbulb className="h-5 w-5 text-primary" />} items={report.current_gains} />
+        <SummaryList title="后续计划" icon={<ListChecks className="h-5 w-5 text-amber-700" />} items={report.next_plan} />
       </div>
 
       <Card className="overflow-hidden">
-        <CardHeader className="border-b bg-gradient-to-r from-indigo-500/10 to-cyan-500/10">
+        <CardHeader className="border-b bg-secondary/60">
           <CardTitle className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             可复制微信汇报文本
             <Button onClick={copy}>

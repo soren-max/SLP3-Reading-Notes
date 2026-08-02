@@ -26,6 +26,17 @@ def test_seeded_api_contract(tmp_path, monkeypatch):
     chapter_data = chapters.json()
     assert len(chapter_data) == len(seed_module.CHAPTERS)
 
+    intern_records = client.get("/api/interns")
+    assert intern_records.status_code == 200
+    week_30_records = [record for record in intern_records.json() if "2026-07-20" <= record["record_date"] <= "2026-07-23"]
+    assert [record["record_date"] for record in week_30_records] == ["2026-07-23", "2026-07-22", "2026-07-21", "2026-07-20"]
+    assert all("## 当天目标" in record["content"] and "## 下一步计划" in record["content"] for record in week_30_records)
+    week_31_records = [record for record in intern_records.json() if "2026-07-27" <= record["record_date"] <= "2026-07-31"]
+    daily_week_31 = [record for record in week_31_records if "周实习总结" not in record["title"]]
+    assert [record["record_date"] for record in daily_week_31] == ["2026-07-31", "2026-07-30", "2026-07-29", "2026-07-28", "2026-07-27"]
+    assert all("## 今日工作概览" in record["content"] and "## 后续计划" in record["content"] for record in daily_week_31)
+    assert any(record["title"] == "2026 年第 31 周实习总结：从运维平台到内网智能体闭环" for record in week_31_records)
+
     high_priority_titles = {chapter["title"] for chapter in chapter_data if chapter["priority"] == "高"}
     expected_high_priority = {
         "Embeddings",

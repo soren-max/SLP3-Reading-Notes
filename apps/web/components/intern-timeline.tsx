@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { marked } from "marked";
-import { Calendar, ChevronDown, ChevronUp, Hash, Tag, Building2, Clipboard } from "lucide-react";
+import { Calendar, CalendarRange, ChevronDown, ChevronUp, Hash, Tag, Building2, Clipboard } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +29,9 @@ export function InternTimeline({ records }: { records: InternRecord[] }) {
   const toggleExpand = (id: number) => {
     setExpandedId((prev) => (prev === id ? null : id));
   };
+
+  const week30Records = records.filter((record) => record.record_date >= "2026-07-20" && record.record_date <= "2026-07-23");
+  const week31Records = records.filter((record) => record.record_date >= "2026-07-27" && record.record_date <= "2026-07-31");
 
   const copyContent = async (content: string) => {
     await navigator.clipboard.writeText(content);
@@ -57,7 +60,42 @@ export function InternTimeline({ records }: { records: InternRecord[] }) {
         />
       </div>
 
-      <div className="space-y-4">
+      {week30Records.length > 0 && (
+        <Card className="border-primary/25 bg-primary/10">
+          <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <CalendarRange className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+              <div>
+                <p className="text-sm font-semibold">2026 年第 30 周实习工作记录</p>
+                <p className="mt-1 text-sm text-muted-foreground">7 月 20 日至 23 日 · 离线交付、Mock 执行链路与 Docker 部署准备</p>
+              </div>
+            </div>
+            <a href="#intern-week-30" className="text-sm font-medium text-primary underline-offset-4 hover:underline focus-ring">
+              查看 {week30Records.length} 篇日报
+            </a>
+          </CardContent>
+        </Card>
+      )}
+
+      {week31Records.length > 0 && (
+        <Card className="border-sky-200 bg-sky-50/70 dark:border-sky-900/70 dark:bg-sky-950/20">
+          <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <CalendarRange className="mt-0.5 h-5 w-5 shrink-0 text-sky-700 dark:text-sky-300" aria-hidden="true" />
+              <div>
+                <p className="text-sm font-semibold">2026 年第 31 周实习工作记录</p>
+                <p className="mt-1 text-sm text-muted-foreground">7 月 27 日至 31 日 · 内网执行链路、告警协作与离线交付准备</p>
+              </div>
+            </div>
+            <a href="#intern-week-31" className="text-sm font-medium text-sky-700 underline-offset-4 hover:underline focus-ring dark:text-sky-300">
+              查看 {week31Records.length} 篇记录
+            </a>
+          </CardContent>
+        </Card>
+      )}
+
+      <div id="intern-week-31" className="space-y-4">
+        <span id="intern-week-30" className="block scroll-mt-24" aria-hidden="true" />
         {filtered.map((record) => {
           const expanded = expandedId === record.id;
           const tagList = record.tags
@@ -78,7 +116,7 @@ export function InternTimeline({ records }: { records: InternRecord[] }) {
                 <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
                   <div className="space-y-1">
                     <div className="flex items-center gap-3">
-                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-indigo-600 to-cyan-500 text-sm font-bold text-white shadow-sm">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-foreground text-sm font-bold text-background">
                         {record.day}
                       </span>
                       <div>

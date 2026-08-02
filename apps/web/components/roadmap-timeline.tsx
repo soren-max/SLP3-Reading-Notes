@@ -21,21 +21,21 @@ const chapterHints = [
 export function RoadmapTimeline({ phases }: { phases: RoadmapPhase[] }) {
   return (
     <div className="relative space-y-4">
-      <div className="absolute left-5 top-8 hidden h-[calc(100%-4rem)] w-px bg-gradient-to-b from-indigo-500 via-cyan-500 to-transparent md:block" />
+      <div className="absolute left-5 top-8 hidden h-[calc(100%-4rem)] w-px bg-border md:block" />
       {phases.map((phase, index) => (
         <div key={phase.phase} className="relative md:pl-14">
           <div className="absolute left-0 top-6 hidden h-10 w-10 place-items-center rounded-lg border bg-card shadow-sm md:grid">
             <Layers3 className="h-5 w-5 text-primary" />
           </div>
-          <Card className="overflow-hidden hover:border-primary/40 hover:shadow-lg hover:shadow-indigo-500/10">
-            <CardHeader className="border-b bg-gradient-to-r from-indigo-500/10 to-cyan-500/10">
+          <Card className="overflow-hidden hover:border-primary/40">
+            <CardHeader className="border-b bg-secondary/60">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Phase {index + 1}</p>
                   <CardTitle className="mt-1">{phase.phase}</CardTitle>
                 </div>
                 <div className="flex items-center gap-2 rounded-full border bg-background/70 px-3 py-2 text-sm font-medium">
-                  <FileCheck2 className="h-4 w-4 text-cyan-500" />
+                  <FileCheck2 className="h-4 w-4 text-primary" />
                   {outputs[index]}
                 </div>
               </div>
@@ -68,7 +68,7 @@ export function CustomRoadmaps({ routes }: { routes: CustomRoadmap[] }) {
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {routes.map((route) => (
-        <Card key={route.name} className="hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg hover:shadow-indigo-500/10">
+        <Card key={route.name} className="hover:border-primary/40">
           <CardHeader>
             <CardTitle>{route.name}</CardTitle>
           </CardHeader>

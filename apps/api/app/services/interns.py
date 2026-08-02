@@ -6,7 +6,7 @@ from app.schemas.intern import InternRecordCreate, InternRecordUpdate
 
 
 def list_intern_records(db: Session) -> list[InternRecord]:
-    stmt = select(InternRecord).order_by(InternRecord.day.asc())
+    stmt = select(InternRecord).order_by(InternRecord.record_date.desc(), InternRecord.day.desc())
     return list(db.scalars(stmt).all())
 
 

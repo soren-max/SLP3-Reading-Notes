@@ -17,8 +17,8 @@ type NoteInfo = {
 export function ChapterCard({ chapter, noteInfo }: { chapter: Chapter; noteInfo?: NoteInfo }) {
   return (
     <Link href={`/chapters/${chapter.id}`} className="block h-full no-underline">
-      <Card className="group h-full overflow-hidden hover:-translate-y-1 hover:border-primary/45 hover:shadow-xl hover:shadow-indigo-500/10">
-        <div className="h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-cyan-500 opacity-80" />
+      <Card className="group h-full overflow-hidden hover:border-primary/45">
+        <div className="h-1 bg-primary" />
         <CardHeader>
           <div className="flex items-start justify-between gap-3">
             <div>
